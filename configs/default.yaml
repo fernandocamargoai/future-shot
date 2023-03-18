@@ -1,0 +1,21 @@
+seed_everything: 42
+trainer:
+  default_root_dir: experiment
+  auto_select_gpus: True
+  max_epochs: 100
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        monitor: val_loss
+        patience: 5
+        verbose: True
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        verbose: True
+data:
+  batch_size: 8
+optimizer:
+  class_path: torch.optim.RAdam
+  init_args:
+    lr: 0.001

@@ -1,0 +1,37 @@
+seed_everything: 42
+trainer:
+  default_root_dir: experiment
+  max_epochs: 100
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        monitor: val_loss
+        patience: 5
+        verbose: True
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        verbose: True
+data:
+  batch_size: 8
+  dataset: banking77
+  num_workers: 0
+  preprocessing_fn:
+    class_path: future_shot.extra.transformer.preprocessing.TokenizationFutureShotPreprocessing
+    init_args:
+      tokenizer: sentence-transformers/paraphrase-mpnet-base-v2
+      text_field: text
+      max_length: 128
+model:
+  encoder:
+    class_path: sentence_transformers.SentenceTransformer
+    init_args:
+      model_name_or_path: sentence-transformers/paraphrase-mpnet-base-v2
+  embedding_dim: 768
+  num_classes: 77
+  normalize_embeddings: True
+
+optimizer:
+  class_path: torch.optim.RAdam
+  init_args:
+    lr: 0.00001
