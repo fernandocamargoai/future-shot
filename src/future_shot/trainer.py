@@ -1,12 +1,89 @@
-from pytorch_lightning.cli import LightningCLI
+import os.path
+import uuid
+
+from pytorch_lightning import Trainer, LightningModule
+from pytorch_lightning.cli import LightningCLI, SaveConfigCallback
 
 from future_shot.data import FutureShotDataModule
 from future_shot.model import FutureShotLightningModule
 
 
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
+
+
+class FutureShotLightningCLI(LightningCLI):
+    def before_instantiate_classes(self) -> None:
+        if self.config["subcommand"] == "fit":
+            if self.config["fit"]["trainer"].get("default_root_dir") is None:
+                self.config["fit"]["trainer"]["default_root_dir"] = os.path.join(
+                    "experiments", str(uuid.uuid4())
+                )
+            if self.config["fit"]["trainer"]["logger"]:
+                loggers = (
+                    self.config["fit"]["trainer"]["logger"]
+                    if isinstance(self.config["fit"]["trainer"]["logger"], list)
+                    else [self.config["fit"]["trainer"]["logger"]]
+                )
+
+                for logger in loggers:
+                    log_dir_field = (
+                        "log_dir"
+                        if "TensorBoardLogger" in logger["class_path"]
+                        else "save_dir"
+                    )
+                    if log_dir_field in logger["init_args"] and logger["init_args"][
+                        log_dir_field
+                    ] in (None, "."):
+                        logger["init_args"][log_dir_field] = self.config["fit"][
+                            "trainer"
+                        ]["default_root_dir"]
+
+                    if "WandbLogger" in logger["class_path"]:
+                        id = os.path.split(
+                            self.config["fit"]["trainer"]["default_root_dir"]
+                        )[1]
+                        if (
+                            "id" in logger["init_args"]
+                            and logger["init_args"]["id"] is None
+                        ):
+                            logger["init_args"]["id"] = id
+                        if (
+                            "version" in logger["init_args"]
+                            and logger["init_args"]["version"] is None
+                        ):
+                            logger["init_args"]["version"] = id
+
+        elif self.config["subcommand"] in ("validate", "test"):
+            self.config["fit"]["trainer"][
+                "logger"
+            ] = False  # Avoids mistakenly logging to wandb or similar when validating or testing
+
+
+class FutureShotSaveConfigCallback(SaveConfigCallback):
+    def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
+        super().setup(trainer, pl_module, stage)
+
+        if wandb is not None:
+            config_path = os.path.join(trainer.log_dir, self.config_filename)
+
+            artifact = wandb.Artifact(name="cli_config", type="config")
+            artifact.add_file(config_path, name="config.yaml")
+
+            wandb.run.log_artifact(artifact)
+
+
 def cli_main():
-    cli = LightningCLI(FutureShotLightningModule, FutureShotDataModule)
+    cli = FutureShotLightningCLI(
+        FutureShotLightningModule,
+        FutureShotDataModule,
+        save_config_callback=FutureShotSaveConfigCallback,
+        # save_config_kwargs={"overwrite": True},
+    )
     # note: don't call fit!!
+    # TODO: Add custom method to invoke https://lightning.ai/docs/pytorch/stable/api/pytorch_lightning.tuner.tuning.Tuner.html
 
 
 if __name__ == "__main__":

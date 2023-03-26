@@ -10,7 +10,13 @@ MAINTAINER = "Fernando H. F. Camargo"
 MAINTAINER_EMAIL = "fernando.camargo.ai@gmail.com"
 
 INTEGRATIONS_REQUIRE = ["optuna"]
-REQUIRED_PKGS = ["torch>=1.10.0", "pytorch-lightning>=1.9.0", "jsonargparse[signatures]", "datasets>=2.3.0", "evaluate>=0.3.0"]
+REQUIRED_PKGS = [
+    "torch>=2.0.0",
+    "pytorch-lightning>=2.0.0",
+    "jsonargparse[signatures]",
+    "datasets>=2.3.0",
+    "evaluate>=0.3.0",
+]
 TRANSFORMERS_PKGS = ["sentence-transformers>=2.2.2"]
 QUALITY_REQUIRE = ["black", "flake8", "isort", "tabulate"]
 ONNX_REQUIRE = ["onnxruntime", "onnx", "skl2onnx"]
@@ -18,6 +24,7 @@ OPENVINO_REQUIRE = ["hummingbird-ml", "openvino>=2022.3"]
 TESTS_REQUIRE = ["pytest", "pytest-cov"] + ONNX_REQUIRE + OPENVINO_REQUIRE
 EXTRAS_REQUIRE = {
     "transformers": TRANSFORMERS_PKGS,
+    "wandb": ["wandb"],
     "optuna": INTEGRATIONS_REQUIRE,
     "quality": QUALITY_REQUIRE,
     "tests": TESTS_REQUIRE,
@@ -31,7 +38,9 @@ def combine_requirements(base_keys):
 
 
 EXTRAS_REQUIRE["dev"] = combine_requirements([k for k in EXTRAS_REQUIRE])
-EXTRAS_REQUIRE["compat_tests"] = [requirement.replace(">=", "==") for requirement in REQUIRED_PKGS] + TESTS_REQUIRE
+EXTRAS_REQUIRE["compat_tests"] = [
+    requirement.replace(">=", "==") for requirement in REQUIRED_PKGS
+] + TESTS_REQUIRE
 
 setup(
     name="future-shot",

@@ -1,17 +1,22 @@
 seed_everything: 42
 trainer:
-  default_root_dir: experiment
   max_epochs: 100
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        monitor: val_loss
+        monitor: val/loss
         patience: 5
         verbose: True
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
-        monitor: val_loss
+        monitor: val/loss
         verbose: True
+  logger:
+    - class_path: pytorch_lightning.loggers.wandb.WandbLogger
+      init_args:
+        project: future-shot-banking77
+        log_model: True
+
 data:
   batch_size: 8
   dataset: banking77
