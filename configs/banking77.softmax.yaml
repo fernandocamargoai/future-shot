@@ -12,6 +12,7 @@ trainer:
       init_args:
         monitor: val/loss
         verbose: True
+  enable_checkpointing: False
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
@@ -29,7 +30,7 @@ data:
       text_field: text
       max_length: 128
 model:
-  class_path: future_shot.lightning.FutureShotLightningModule
+  class_path: future_shot.lightning.SoftmaxLightningModule
   init_args:
     encoder:
       class_path: sentence_transformers.SentenceTransformer
@@ -37,7 +38,8 @@ model:
         model_name_or_path: sentence-transformers/paraphrase-mpnet-base-v2
     embedding_dim: 768
     num_classes: 77
-    normalize_embeddings: True
+    loss:
+      class_path: torch.nn.CrossEntropyLoss
 
 optimizer:
   class_path: torch.optim.RAdam

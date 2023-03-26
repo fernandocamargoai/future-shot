@@ -5,7 +5,10 @@ from torch import nn
 
 
 class EmbeddingsDropout(nn.Module):
-    def __init__(self, p: float = 0.5,) -> None:
+    def __init__(
+        self,
+        p: float = 0.5,
+    ) -> None:
         super().__init__()
         if p < 0 or p > 1:
             raise ValueError(

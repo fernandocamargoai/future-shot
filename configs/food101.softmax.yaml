@@ -1,0 +1,86 @@
+seed_everything: 42
+trainer:
+  max_epochs: 100
+  precision: 16-mixed
+  accumulate_grad_batches: 4
+  enable_checkpointing: False
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        monitor: val/acc_best
+        mode: max
+        patience: 5
+        verbose: True
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val/acc_best
+        mode: max
+        verbose: True
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: step
+  logger:
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      project: future-shot-food101
+      log_model: True
+
+data:
+  batch_size: 16
+  dataset: food101
+  num_workers: 4
+  preprocessing_fn:
+    class_path: future_shot.extra.timm.preprocessing.TimmFutureShotPreprocessing
+    init_args:
+      image_field: image
+      transform:
+        class_path: future_shot.extra.timm.preprocessing.TimmTransform
+#  augmentation_fn:
+#    class_path: future_shot.extra.timm.preprocessing.TimmFutureShotAugmentation
+#    init_args:
+#      image_field: image
+#      transform:
+#        class_path: future_shot.extra.timm.preprocessing.TimmTransform
+#        init_args:
+#          auto_augment: null
+  augmentation_fn:
+    class_path: future_shot.extra.timm.preprocessing.TimmFutureShotAugmentation
+    init_args:
+      image_field: image
+      transform:
+        class_path: future_shot.extra.timm.preprocessing.TimmTransformWithAutoAugmentPolicy
+        init_args:
+          policy: CIFAR10
+model:
+  class_path: future_shot.lightning.SoftmaxLightningModule
+  init_args:
+    encoder:
+      class_path: future_shot.extra.timm.model.TimmModel
+      init_args:
+        model_name: vit_base_patch16_224.augreg_in21k_ft_in1k
+        image_field: image
+    embedding_dim: 768
+    num_classes: 101
+    label_field: label
+    loss:
+      class_path: torch.nn.CrossEntropyLoss
+      init_args:
+        label_smoothing: 0.1
+
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 5e-05
+
+#lr_scheduler:
+#  class_path: future_shot.extra.transformer.lr_scheduler.LinearWithWarmupLRScheduler
+#  init_args:
+#    num_warmup_steps: 1200
+#    num_training_steps: 12000
+#lr_scheduler_interval: step
+
+parameter_linking:
+  model.init_args.encoder.init_args.model_name: data.preprocessing_fn.init_args.transform.init_args.model_name
+  data.preprocessing_fn.init_args.image_field: data.augmentation_fn.init_args.image_field
+  data.preprocessing_fn.init_args.transform.init_args.model_name: data.augmentation_fn.init_args.transform.init_args.model_name
+#  model.init_args.embedding_dim: model.init_args.encoder.init_args.dense_layer_dim

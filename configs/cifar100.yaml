@@ -1,0 +1,64 @@
+seed_everything: 42
+trainer:
+  max_epochs: 100
+  precision: 16-mixed
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        monitor: val/acc_best
+        mode: max
+        patience: 5
+        verbose: True
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val/acc_best
+        mode: max
+        verbose: True
+  logger:
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      project: future-shot-cifar100
+      log_model: True
+
+data:
+  batch_size: 64
+  dataset: cifar100
+  num_workers: 0
+  preprocessing_fn:
+    class_path: future_shot.extra.timm.preprocessing.TimmFutureShotPreprocessing
+    init_args:
+      image_field: img
+      transform:
+        class_path: future_shot.extra.timm.preprocessing.TimmTransform
+        init_args:
+          model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
+          input_size: [3, 32, 32]
+  augmentation_fn:
+    class_path: future_shot.extra.timm.preprocessing.TimmFutureShotAugmentation
+    init_args:
+      image_field: img
+      transform:
+        class_path: future_shot.extra.timm.preprocessing.TimmTransform
+        init_args:
+          model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
+          input_size: [3, 32, 32]
+          auto_augment: rand-m4-mstd0.5
+model:
+  class_path: future_shot.lightning.FutureShotLightningModule
+  init_args:
+    encoder:
+      class_path: future_shot.extra.timm.model.TimmModel
+      init_args:
+        model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
+    embedding_dim: 6144
+    num_classes: 100
+    normalize_embeddings: True
+    label_field: fine_label
+
+optimizer:
+  class_path: torch.optim.RAdam
+  init_args:
+    lr: 0.001
+
+#parameter_linking:
+#  model.init_args.embedding_dim: model.init_args.encoder.init_args.dense_layer_dim
