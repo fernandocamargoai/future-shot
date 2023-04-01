@@ -11,7 +11,7 @@ MAINTAINER_EMAIL = "fernando.camargo.ai@gmail.com"
 
 INTEGRATIONS_REQUIRE = ["optuna"]
 REQUIRED_PKGS = [
-    "torch>=2.0.0",
+    "torch>=1.11.0",
     "pytorch-lightning>=2.0.0",
     "jsonargparse[signatures]",
     "datasets>=2.3.0",

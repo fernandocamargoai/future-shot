@@ -1,16 +1,12 @@
 import abc
-import functools
 import os
-from typing import Callable, Dict, Any, List, Optional, Union
+from typing import Dict, Any, Optional, Union
 
 import datasets
 import torch
-from datasets import DatasetDict, Split, load_dataset
-from datasets.formatting import get_formatter
+from datasets import DatasetDict, Split
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
-
-from future_shot.utils import call_chain
 
 
 class FutureShotPreprocessing(object, metaclass=abc.ABCMeta):
