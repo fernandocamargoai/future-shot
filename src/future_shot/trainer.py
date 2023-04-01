@@ -16,16 +16,17 @@ except ModuleNotFoundError:
 
 class FutureShotLightningCLI(LightningCLI):
     def before_instantiate_classes(self) -> None:
-        if self.config["subcommand"] == "fit":
-            if self.config["fit"]["trainer"].get("default_root_dir") is None:
-                self.config["fit"]["trainer"]["default_root_dir"] = os.path.join(
+        subcommand = self.config["subcommand"]
+        if subcommand == "fit":
+            if self.config[subcommand]["trainer"].get("default_root_dir") is None:
+                self.config[subcommand]["trainer"]["default_root_dir"] = os.path.join(
                     "experiments", str(uuid.uuid4())
                 )
-            if self.config["fit"]["trainer"]["logger"]:
+            if self.config[subcommand]["trainer"]["logger"]:
                 loggers = (
-                    self.config["fit"]["trainer"]["logger"]
-                    if isinstance(self.config["fit"]["trainer"]["logger"], list)
-                    else [self.config["fit"]["trainer"]["logger"]]
+                    self.config[subcommand]["trainer"]["logger"]
+                    if isinstance(self.config[subcommand]["trainer"]["logger"], list)
+                    else [self.config[subcommand]["trainer"]["logger"]]
                 )
 
                 for logger in loggers:
@@ -37,13 +38,13 @@ class FutureShotLightningCLI(LightningCLI):
                     if log_dir_field in logger["init_args"] and logger["init_args"][
                         log_dir_field
                     ] in (None, "."):
-                        logger["init_args"][log_dir_field] = self.config["fit"][
+                        logger["init_args"][log_dir_field] = self.config[subcommand][
                             "trainer"
                         ]["default_root_dir"]
 
                     if "WandbLogger" in logger["class_path"]:
                         id = os.path.split(
-                            self.config["fit"]["trainer"]["default_root_dir"]
+                            self.config[subcommand]["trainer"]["default_root_dir"]
                         )[1]
                         if (
                             "id" in logger["init_args"]
@@ -55,9 +56,8 @@ class FutureShotLightningCLI(LightningCLI):
                             and logger["init_args"]["version"] is None
                         ):
                             logger["init_args"]["version"] = id
-
         elif self.config["subcommand"] in ("validate", "test"):
-            self.config["fit"]["trainer"][
+            self.config[subcommand]["trainer"][
                 "logger"
             ] = False  # Avoids mistakenly logging to wandb or similar when validating or testing
 
@@ -66,7 +66,7 @@ class FutureShotSaveConfigCallback(SaveConfigCallback):
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
         super().setup(trainer, pl_module, stage)
 
-        if wandb is not None:
+        if wandb is not None and wandb.run is not None:
             config_path = os.path.join(trainer.log_dir, self.config_filename)
 
             artifact = wandb.Artifact(name="cli_config", type="config")

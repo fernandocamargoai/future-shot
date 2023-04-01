@@ -1,11 +1,12 @@
 seed_everything: 42
 trainer:
   max_epochs: 100
+  precision: 16-mixed
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         monitor: val/loss
-        patience: 5
+        patience: 3
         verbose: True
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
