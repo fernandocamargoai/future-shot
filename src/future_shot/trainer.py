@@ -42,7 +42,7 @@ class FutureShotLightningCLI(LightningCLI):
                             "trainer"
                         ]["default_root_dir"]
 
-                    if "WandbLogger" in logger["class_path"]:
+                    if "Wandb" in logger["class_path"]:
                         id = os.path.split(
                             self.config[subcommand]["trainer"]["default_root_dir"]
                         )[1]
