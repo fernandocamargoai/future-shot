@@ -183,7 +183,7 @@ class FutureShotLightningModule(LightningModule):
 
         self.log(
             "val/loss_best",
-            self._val_loss_best,
+            self._val_loss_best.compute(),
             on_epoch=True,
             prog_bar=True,
         )
@@ -192,7 +192,7 @@ class FutureShotLightningModule(LightningModule):
 
         self.log(
             "val/acc_best",
-            self._val_acc_best,
+            self._val_acc_best.compute(),
             on_epoch=True,
             prog_bar=True,
         )
