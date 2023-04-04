@@ -21,7 +21,6 @@ class FutureShotLightningCLI(LightningCLI):
             if self.config[subcommand]["trainer"].get("default_root_dir") is None:
                 root_dir = os.path.join("experiments", str(uuid.uuid4()))
                 self.config[subcommand]["trainer"]["default_root_dir"] = root_dir
-                os.makedirs(root_dir, exist_ok=True)
             if self.config[subcommand]["trainer"]["logger"]:
                 loggers = (
                     self.config[subcommand]["trainer"]["logger"]

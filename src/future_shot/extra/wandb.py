@@ -10,3 +10,4 @@ class WandbWithLocalFilesDeletionLogger(WandbLogger):
         super().finalize(status)
 
         shutil.rmtree(self.save_dir)
+        # TODO: remove and find a better way to do this
