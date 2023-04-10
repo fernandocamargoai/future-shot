@@ -36,7 +36,7 @@ class FutureShotLightningCLI(LightningCLI):
                     )
                     if log_dir_field in logger["init_args"] and logger["init_args"][
                         log_dir_field
-                    ] in (None, "."):
+                    ] == ".":
                         logger["init_args"][log_dir_field] = self.config[subcommand][
                             "trainer"
                         ]["default_root_dir"]
@@ -47,12 +47,10 @@ class FutureShotLightningCLI(LightningCLI):
                         )[1]
                         if (
                             "id" in logger["init_args"]
-                            and logger["init_args"]["id"] is None
                         ):
                             logger["init_args"]["id"] = id
                         if (
                             "version" in logger["init_args"]
-                            and logger["init_args"]["version"] is None
                         ):
                             logger["init_args"]["version"] = id
         elif self.config["subcommand"] in ("validate", "test"):
