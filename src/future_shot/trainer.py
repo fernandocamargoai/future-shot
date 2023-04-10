@@ -34,9 +34,7 @@ class FutureShotLightningCLI(LightningCLI):
                         if "TensorBoardLogger" in logger["class_path"]
                         else "save_dir"
                     )
-                    if log_dir_field in logger["init_args"] and logger["init_args"][
-                        log_dir_field
-                    ] == ".":
+                    if log_dir_field in logger["init_args"]:
                         logger["init_args"][log_dir_field] = self.config[subcommand][
                             "trainer"
                         ]["default_root_dir"]
