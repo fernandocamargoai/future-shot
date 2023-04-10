@@ -34,4 +34,4 @@ class TokenizationFutureShotPreprocessing(FutureShotPreprocessing):
             return_token_type_ids="token_type_ids" in self._tokenizer.model_input_names,
         )
 
-        return {**batch, **features}
+        return features

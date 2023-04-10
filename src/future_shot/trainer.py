@@ -63,15 +63,16 @@ class FutureShotLightningCLI(LightningCLI):
 
 class FutureShotSaveConfigCallback(SaveConfigCallback):
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
-        super().setup(trainer, pl_module, stage)
+        if stage == "fit":
+            super().setup(trainer, pl_module, stage)
 
-        if wandb is not None and wandb.run is not None:
-            config_path = os.path.join(trainer.log_dir, self.config_filename)
+            if wandb is not None and wandb.run is not None:
+                config_path = os.path.join(trainer.log_dir, self.config_filename)
 
-            artifact = wandb.Artifact(name="cli_config", type="config")
-            artifact.add_file(config_path, name="config.yaml")
+                artifact = wandb.Artifact(name="cli_config", type="config")
+                artifact.add_file(config_path, name="config.yaml")
 
-            wandb.run.log_artifact(artifact)
+                wandb.run.log_artifact(artifact)
 
 
 def cli_main():
@@ -79,7 +80,6 @@ def cli_main():
         FutureShotLightningModule,
         FutureShotDataModule,
         save_config_callback=FutureShotSaveConfigCallback,
-        # save_config_kwargs={"overwrite": True},
     )
     # note: don't call fit!!
     # TODO: Add custom method to invoke https://lightning.ai/docs/pytorch/stable/api/pytorch_lightning.tuner.tuning.Tuner.html

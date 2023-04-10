@@ -96,7 +96,7 @@ class FutureShotLightningModule(LightningModule):
     def forward(self, features: Dict[str, torch.Tensor]) -> torch.Tensor:
         return self._model.forward(features)
 
-    def _step(self, batch: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
+    def _step(self, batch: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         labels = batch["label"]
         batch_size = labels.size(0)
         anchors = self._model.normalize(self._model.compute_embeddings(batch))  # (B, E)
