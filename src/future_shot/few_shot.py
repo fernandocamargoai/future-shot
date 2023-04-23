@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Union, cast
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 import yaml
 from jsonargparse import CLI
 from pytorch_lightning import Trainer
@@ -234,6 +235,23 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
         df.to_csv(os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"), index=False)
 
 
+def download_wandb_artifacts(
+    wandb_project: str,
+    wandb_run_group: str,
+):
+    group_dir_path = os.path.join("experiments", f"group_{wandb_run_group}")
+    os.makedirs(group_dir_path, exist_ok=True)
+
+    api = wandb.Api()
+    runs = api.runs(wandb_project, filters={"group": wandb_run_group})
+
+    for run in tqdm(runs, total=runs.length):
+        run_dir_path = os.path.join(group_dir_path, run.id)
+        os.makedirs(run_dir_path, exist_ok=True)
+
+        for artifact in run.logged_artifacts():
+            artifact.download(run_dir_path)
+
 
 if __name__ == "__main__":
-    CLI([fit, test])
+    CLI([fit, test, download_wandb_artifacts])
