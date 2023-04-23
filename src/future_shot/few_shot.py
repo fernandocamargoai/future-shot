@@ -89,14 +89,14 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
         )[0]
 
         config = yaml.load(open(config_path, "r"), Loader=yaml.FullLoader)
+        args = {key: value for key, value in config.items() if key in ("model", "data", "seed_everything")}
+        args["trainer"] = {
+            "precision": config["trainer"]["precision"],
+        }
         cli = FutureShotLightningCLI(
             FutureShotLightningModule,
             FutureShotDataModule,
-            args={
-                key: value
-                for key, value in config.items()
-                if key in ("model", "data", "seed_everything")
-            },
+            args=args,
             run=False,
             save_config_callback=None,
         )
