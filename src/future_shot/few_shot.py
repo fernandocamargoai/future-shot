@@ -151,9 +151,7 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
                 )
 
             few_shot_test_dataloader = DataLoader(
-                dataset=data.test_dataset.filter(
-                    lambda example: int(example["label"]) in few_shot_labels
-                ),
+                dataset=data.test_dataset,
                 batch_size=data.hparams.batch_size,
                 num_workers=data.hparams.num_workers,
                 pin_memory=data.hparams.pin_memory,
