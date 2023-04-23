@@ -103,7 +103,7 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
 
         data: FutureShotDataModule = cli.datamodule
         model: FutureShotLightningModule = cli.model
-        model.load_state_dict(torch.load(checkpoint_path)["state_dict"])
+        model.load_state_dict(torch.load(checkpoint_path, map_location=model.device)["state_dict"])
         trainer: Trainer = cli.trainer
         trainer.logger = None
 

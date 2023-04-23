@@ -8,7 +8,7 @@ from huggingface_hub import PyTorchModelHubMixin
 from pytorch_lightning import LightningModule
 from sklearn.metrics import classification_report
 from torch import nn
-from torchmetrics import Accuracy, MaxMetric, MinMetric
+from torchmetrics import Accuracy, MaxMetric, MinMetric, F1Score
 
 from future_shot.module import EmbeddingsDropout
 
@@ -85,11 +85,31 @@ class FutureShotLightningModule(LightningModule):
             self._triplet_loss = nn.TripletMarginLoss()
 
         self._train_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self._train_micro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="micro"
+        )
+        self._train_macro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="macro"
+        )
         self._val_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self._val_micro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="micro"
+        )
+        self._val_macro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="macro"
+        )
         # for logging best so far validation accuracy
         self._val_loss_best = MinMetric()
         self._val_acc_best = MaxMetric()
+        self._val_micro_f1_best = MaxMetric()
+        self._val_macro_f1_best = MaxMetric()
         self._test_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self._test_micro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="micro"
+        )
+        self._test_macro_f1 = F1Score(
+            task="multiclass", num_classes=num_classes, average="macro"
+        )
 
         self._test_outputs = []
 
@@ -158,10 +178,26 @@ class FutureShotLightningModule(LightningModule):
         loss, preds = self._step(batch)
 
         self._train_acc(preds, batch["label"])
+        self._train_micro_f1(preds, batch["label"])
+        self._train_macro_f1(preds, batch["label"])
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
             "train/acc", self._train_acc, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "train/micro_f1",
+            self._train_micro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        self.log(
+            "train/macro_f1",
+            self._train_macro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
         )
 
         return loss
@@ -174,30 +210,58 @@ class FutureShotLightningModule(LightningModule):
         loss, preds = self._step(batch)
 
         self._val_acc(preds, batch["label"])
+        self._val_micro_f1(preds, batch["label"])
+        self._val_macro_f1(preds, batch["label"])
 
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/acc", self._val_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/micro_f1",
+            self._val_micro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        self.log(
+            "val/macro_f1",
+            self._val_macro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return loss
 
     def on_validation_epoch_end(self) -> None:
         val_loss = self.trainer.logged_metrics["val/loss"]
         self._val_loss_best.update(val_loss)
+        self._val_acc_best.update(self._val_acc.compute())
+        self._val_micro_f1_best.update(self._val_micro_f1.compute())
+        self._val_macro_f1_best.update(self._val_macro_f1.compute())
 
         self.log(
             "val/loss_best",
             self._val_loss_best.compute(),
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
         )
-
-        self._val_acc_best.update(self._val_acc.compute())
-
         self.log(
             "val/acc_best",
             self._val_acc_best.compute(),
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
+        )
+        self.log(
+            "val/micro_f1_best",
+            self._val_micro_f1_best.compute(),
+            on_epoch=True,
+            prog_bar=False,
+        )
+        self.log(
+            "val/macro_f1_best",
+            self._val_macro_f1_best.compute(),
+            on_epoch=True,
+            prog_bar=False,
         )
 
     def test_step(
@@ -208,10 +272,26 @@ class FutureShotLightningModule(LightningModule):
         loss, preds = self._step(batch)
 
         self._test_acc(preds, batch["label"])
+        self._test_micro_f1(preds, batch["label"])
+        self._test_macro_f1(preds, batch["label"])
 
-        self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log(
-            "test/acc", self._test_acc, on_step=False, on_epoch=True, prog_bar=True
+            "test/acc", self._test_acc, on_step=False, on_epoch=True, prog_bar=False
+        )
+        self.log(
+            "test/micro_f1",
+            self._test_micro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+        )
+        self.log(
+            "test/macro_f1",
+            self._test_macro_f1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
         )
 
         self._test_outputs.append({"targets": batch["label"], "preds": preds})
