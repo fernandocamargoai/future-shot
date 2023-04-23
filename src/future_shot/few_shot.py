@@ -82,7 +82,7 @@ class FewShotSplit(object):
 
 def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) -> pd.DataFrame:
     metrics = []
-    for experiment_dir_path in experiment_dir_paths:
+    for experiment_dir_path in tqdm(experiment_dir_paths, desc="Evaluating few-shot for each experiment"):
         config_path = os.path.join(experiment_dir_path, "config.yaml")
         checkpoint_path = glob(
             os.path.join(experiment_dir_path, "**", "*.ckpt"), recursive=True
