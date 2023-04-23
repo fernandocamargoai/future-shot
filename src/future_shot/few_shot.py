@@ -219,9 +219,8 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
         if os.path.isdir(experiment_dir_path)
     ]
 
-    dfs = []
-
     for train_size in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1):
+        print("Evaluating for train_size=%s" % str(train_size))
         df = _evaluate_few_shot(
             FewShotSplit(
                 n_splits=n_splits,
@@ -230,6 +229,7 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
             ),
             experiment_dir_paths,
         )
+        print("Saving results to %s" % os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"))
         df.to_csv(os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"), index=False)
 
 
