@@ -16,6 +16,7 @@ REQUIRED_PKGS = [
     "jsonargparse[signatures]",
     "datasets>=2.3.0",
     "evaluate>=0.3.0",
+    "scikit-learn>=1.0.0",
 ]
 TRANSFORMERS_PKGS = ["sentence-transformers>=2.2.2"]
 QUALITY_REQUIRE = ["black", "flake8", "isort", "tabulate"]
