@@ -1,11 +1,24 @@
 import hashlib
 import os.path
-from typing import Dict, Any, List
+from glob import glob
+from typing import Dict, Any, List, Union, cast
 
 import numpy as np
+import pandas as pd
+import torch
+import yaml
 from jsonargparse import CLI
+from pytorch_lightning import Trainer
+from sklearn.utils import check_array, check_random_state, indexable
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from future_shot.data import FutureShotFiltering
+from future_shot.data import FutureShotFiltering, FutureShotDataModule
+from future_shot.model import (
+    FutureShotLightningModule,
+    FutureShotEmbeddingWrapperLightningModule,
+)
+from future_shot.trainer import FutureShotLightningCLI
 
 
 class FilterOutLabelsFiltering(FutureShotFiltering):
@@ -14,6 +27,143 @@ class FilterOutLabelsFiltering(FutureShotFiltering):
 
     def __call__(self, example: Dict[str, Any]) -> bool:
         return example["label"] not in self.labels
+
+
+class FewShotSplit(object):
+    def __init__(
+        self,
+        n_splits: int = 10,
+        train_size: Union[int, float] = None,
+        random_state: int = None,
+    ):
+        self.n_splits = n_splits
+        self.train_size = train_size
+        self.random_state = random_state
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return self.n_splits
+
+    def _iter_indices(self, X, y=None, groups=None):
+        y = check_array(y, ensure_2d=False, dtype=None)
+
+        classes, y_indices = np.unique(y, return_inverse=True)
+        n_classes = classes.shape[0]
+
+        class_counts = np.bincount(y_indices)
+        class_indices = np.split(
+            np.argsort(y_indices, kind="mergesort"), np.cumsum(class_counts)[:-1]
+        )
+
+        rng = check_random_state(self.random_state)
+
+        for _ in range(self.n_splits):
+            train = []
+            test = []
+
+            for i in range(n_classes):
+                if isinstance(self.train_size, int):
+                    assert self.train_size < class_counts[i]
+                    split_index = self.train_size
+                else:
+                    split_index = max(round(self.train_size * class_counts[i]), 1)
+
+                shuffled_class_indices = rng.permutation(class_indices[i])
+                train.extend(shuffled_class_indices[:split_index])
+                test.extend(shuffled_class_indices[split_index:])
+
+            yield train, test
+
+    def split(self, X=None, y=None, groups=None):
+        X, y, groups = indexable(X, y, groups)
+        for train, test in self._iter_indices(X, y, groups):
+            yield train, test
+
+
+def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) -> pd.DataFrame:
+    metrics = []
+    for experiment_dir_path in experiment_dir_paths:
+        config_path = os.path.join(experiment_dir_path, "config.yaml")
+        checkpoint_path = glob(
+            os.path.join(experiment_dir_path, "**", "*.ckpt"), recursive=True
+        )[0]
+
+        config = yaml.load(open(config_path, "r"), Loader=yaml.FullLoader)
+        cli = FutureShotLightningCLI(
+            FutureShotLightningModule,
+            FutureShotDataModule,
+            args={
+                key: value
+                for key, value in config.items()
+                if key in ("model", "data", "seed_everything")
+            },
+            run=False,
+            save_config_callback=None,
+        )
+
+        data: FutureShotDataModule = cli.datamodule
+        model: FutureShotLightningModule = cli.model
+        model.load_state_dict(torch.load(checkpoint_path)["state_dict"])
+        trainer: Trainer = cli.trainer
+        trainer.logger = None
+
+        # __main__.FilterOutLabelsFiltering is different from future_shot.few_shot.FilterOutLabelsFiltering,
+        # making instance() not work
+        assert "FilterOutLabelsFiltering" in str(type(data.filtering_fn))
+        filtering_fn: FilterOutLabelsFiltering = cast(
+            FilterOutLabelsFiltering, data.filtering_fn
+        )
+        few_shot_labels = filtering_fn.labels
+        data.filtering_fn = None
+
+        data.prepare_data()
+
+        few_shot_train_dataset = data.train_dataset.filter(
+            lambda example: int(example["label"]) in few_shot_labels
+        )
+
+        few_shot_train_dataloader = DataLoader(
+            dataset=few_shot_train_dataset,
+            batch_size=data.hparams.batch_size,
+            num_workers=data.hparams.num_workers,
+            pin_memory=data.hparams.pin_memory,
+            shuffle=False,
+        )
+
+        embeddings_batches = trainer.predict(
+            FutureShotEmbeddingWrapperLightningModule(model),
+            dataloaders=few_shot_train_dataloader,
+            return_predictions=True,
+        )
+        embeddings = torch.cat(embeddings_batches, dim=0)
+
+        labels = few_shot_train_dataset["label"].cpu().detach().numpy()
+        for train_indices, _ in tqdm(
+            splitter.split(X=None, y=labels, groups=labels), total=splitter.n_splits
+        ):
+            train_labels = labels[train_indices]
+
+            for few_shot_label in few_shot_labels:
+                mask = train_labels == few_shot_label
+                new_label_embeddings = embeddings[np.array(train_indices)[mask]]
+                model._model._class_embedding.weight.data[few_shot_label] = new_label_embeddings.mean(
+                    dim=0
+                )
+
+            few_shot_test_dataloader = DataLoader(
+                dataset=data.test_dataset.filter(
+                    lambda example: int(example["label"]) in few_shot_labels
+                ),
+                batch_size=data.hparams.batch_size,
+                num_workers=data.hparams.num_workers,
+                pin_memory=data.hparams.pin_memory,
+                shuffle=False,
+            )
+
+            metrics.append(
+                trainer.test(model, dataloaders=few_shot_test_dataloader)
+            )
+
+    return pd.DataFrame(data=metrics)
 
 
 def fit(
@@ -62,8 +212,27 @@ def fit(
             os.system(command)
 
 
-def test():
-    pass
+def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
+    experiment_dir_paths = glob(os.path.join(experiments_dir_path, "*"))
+    experiment_dir_paths = [
+        experiment_dir_path
+        for experiment_dir_path in experiment_dir_paths
+        if os.path.isdir(experiment_dir_path)
+    ]
+
+    dfs = []
+
+    for train_size in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1):
+        df = _evaluate_few_shot(
+            FewShotSplit(
+                n_splits=n_splits,
+                train_size=train_size,
+                random_state=seed,
+            ),
+            experiment_dir_paths,
+        )
+        df.to_csv(os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"), index=False)
+
 
 
 if __name__ == "__main__":

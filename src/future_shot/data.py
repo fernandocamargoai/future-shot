@@ -69,10 +69,10 @@ class FutureShotDataModule(LightningDataModule):
                 "`dataset` must be either a DatasetDict or a string that will be used to call "
                 "`datasets.load_dataset(dataset)`"
             )
-        self._filtering_fn = filtering_fn
-        self._preprocessing_fn = preprocessing_fn
-        self._augmentation_fn = augmentation_fn
-        self._transform_fn = transform_fn
+        self.filtering_fn = filtering_fn
+        self.preprocessing_fn = preprocessing_fn
+        self.augmentation_fn = augmentation_fn
+        self.transform_fn = transform_fn
 
     def prepare_data(self) -> None:
         if Split.VALIDATION not in self.dataset:
@@ -81,42 +81,42 @@ class FutureShotDataModule(LightningDataModule):
                 seed=self.hparams.seed,
                 stratify_by_column=self.hparams.stratify_by_column,
             )
-            self._train_dataset = split_dataset[Split.TRAIN]
-            self._valid_dataset = split_dataset[Split.TEST]
+            self.train_dataset = split_dataset[Split.TRAIN]
+            self.valid_dataset = split_dataset[Split.TEST]
         else:
-            self._train_dataset = self.dataset[Split.TRAIN]
-            self._valid_dataset = self.dataset[Split.VALIDATION]
-        self._test_dataset = self.dataset[Split.TEST]
+            self.train_dataset = self.dataset[Split.TRAIN]
+            self.valid_dataset = self.dataset[Split.VALIDATION]
+        self.test_dataset = self.dataset[Split.TEST]
 
-        if self._filtering_fn is not None:
-            self._train_dataset = self._train_dataset.filter(self._filtering_fn)
-            self._valid_dataset = self._valid_dataset.filter(self._filtering_fn)
+        if self.filtering_fn is not None:
+            self.train_dataset = self.train_dataset.filter(self.filtering_fn)
+            self.valid_dataset = self.valid_dataset.filter(self.filtering_fn)
             if self.hparams.apply_filtering_on_test_set:
-                self._test_dataset = self._test_dataset.filter(self._filtering_fn)
+                self.test_dataset = self.test_dataset.filter(self.filtering_fn)
 
-        if self._preprocessing_fn is not None:
-            self._train_dataset = self._train_dataset.map(
-                self._preprocessing_fn, batched=True
+        if self.preprocessing_fn is not None:
+            self.train_dataset = self.train_dataset.map(
+                self.preprocessing_fn, batched=True
             )
-            self._valid_dataset = self._valid_dataset.map(
-                self._preprocessing_fn, batched=True
+            self.valid_dataset = self.valid_dataset.map(
+                self.preprocessing_fn, batched=True
             )
-            self._test_dataset = self._test_dataset.map(
-                self._preprocessing_fn, batched=True
-            )
-
-        if self._augmentation_fn is not None:
-            self._train_dataset = self._train_dataset.with_transform(
-                self._augmentation_fn
+            self.test_dataset = self.test_dataset.map(
+                self.preprocessing_fn, batched=True
             )
 
-        self._train_dataset = self._train_dataset.with_format("torch")
-        self._valid_dataset = self._valid_dataset.with_format("torch")
-        self._test_dataset = self._test_dataset.with_format("torch")
+        if self.augmentation_fn is not None:
+            self.train_dataset = self.train_dataset.with_transform(
+                self.augmentation_fn
+            )
+
+        self.train_dataset = self.train_dataset.with_format("torch")
+        self.valid_dataset = self.valid_dataset.with_format("torch")
+        self.test_dataset = self.test_dataset.with_format("torch")
 
     def train_dataloader(self):
         return DataLoader(
-            dataset=self._train_dataset,
+            dataset=self.train_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
@@ -125,7 +125,7 @@ class FutureShotDataModule(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            dataset=self._valid_dataset,
+            dataset=self.valid_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
@@ -134,7 +134,7 @@ class FutureShotDataModule(LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(
-            dataset=self._test_dataset,
+            dataset=self.test_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 
 class FutureShotLightningCLI(LightningCLI):
     def before_instantiate_classes(self) -> None:
-        subcommand = self.config["subcommand"]
+        subcommand = self.config.get("subcommand")
         if subcommand == "fit":
             if self.config[subcommand]["trainer"].get("default_root_dir") is None:
                 root_dir = os.path.join("experiments", str(uuid.uuid4()))
@@ -51,7 +51,7 @@ class FutureShotLightningCLI(LightningCLI):
                             "version" in logger["init_args"]
                         ):
                             logger["init_args"]["version"] = id
-        elif self.config["subcommand"] in ("validate", "test"):
+        elif subcommand in ("validate", "test"):
             self.config[subcommand]["trainer"][
                 "logger"
             ] = False  # Avoids mistakenly logging to wandb or similar when validating or testing
@@ -65,7 +65,7 @@ class FutureShotSaveConfigCallback(SaveConfigCallback):
             if wandb is not None and wandb.run is not None:
                 config_path = os.path.join(trainer.log_dir, self.config_filename)
 
-                artifact = wandb.Artifact(name="cli_config", type="config")
+                artifact = wandb.Artifact(name=f"cli_config-{wandb.run.id}", type="config")
                 artifact.add_file(config_path, name="config.yaml")
 
                 wandb.run.log_artifact(artifact)

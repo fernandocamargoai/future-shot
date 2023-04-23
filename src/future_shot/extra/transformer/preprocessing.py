@@ -22,7 +22,7 @@ class TokenizationFutureShotPreprocessing(FutureShotPreprocessing):
         self._text_field = text_field
         self._max_length = max_length
 
-    def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
         texts: List[str] = batch[self._text_field]
 
         features = self._tokenizer(

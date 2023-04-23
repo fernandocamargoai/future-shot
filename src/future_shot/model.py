@@ -24,8 +24,8 @@ class FutureShotModel(nn.Module, PyTorchModelHubMixin):
         super().__init__()
 
         self._encoder = encoder
-        self._class_embedding = nn.Embedding(num_classes, embedding_dim)
         self._normalize_embeddings = normalize_embeddings
+        self._class_embedding = nn.Embedding(num_classes, embedding_dim)
 
     def normalize(self, embeddings: torch.Tensor, dim: int = 1) -> torch.Tensor:
         return torch.nn.functional.normalize(embeddings, p=2, dim=dim)
@@ -96,13 +96,16 @@ class FutureShotLightningModule(LightningModule):
     def forward(self, features: Dict[str, torch.Tensor]) -> torch.Tensor:
         return self._model.forward(features)
 
-    def _step(self, batch: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def compute_embeddings(self, features: Dict[str, torch.Tensor]) -> torch.Tensor:
+        return self._model.compute_embeddings(features)
+
+    def _step(
+        self, batch: Dict[str, torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         labels = batch["label"]
         batch_size = labels.size(0)
         anchors = self._model.normalize(self._model.compute_embeddings(batch))  # (B, E)
-        positives = self._model.normalize(
-            self._model.class_embeddings(labels)
-        )  # (B, E)
+        positives = self._model.normalize(self._model.class_embeddings(labels))  # (B, E)
         all_labels = torch.arange(
             0, self.hparams.num_classes, dtype=torch.long, device=self.device
         ).repeat(
@@ -207,22 +210,46 @@ class FutureShotLightningModule(LightningModule):
         self._test_acc(preds, batch["label"])
 
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/acc", self._test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/acc", self._test_acc, on_step=False, on_epoch=True, prog_bar=True
+        )
 
         self._test_outputs.append({"targets": batch["label"], "preds": preds})
 
         return loss
 
-    def on_test_epoch_end(self) -> None:
+    def on_test_epoch_end(self) -> List[Dict[str, torch.Tensor]]:
         try:
-            targets = np.concatenate([output["targets"].detach().cpu() for output in self._test_outputs])
-            preds = np.concatenate([output["preds"].detach().cpu() for output in self._test_outputs])
+            return self._test_outputs
+            # targets = np.concatenate(
+            #     [output["targets"].detach().cpu() for output in self._test_outputs]
+            # )
+            # preds = np.concatenate(
+            #     [output["preds"].detach().cpu() for output in self._test_outputs]
+            # )
 
-            dataset: Dataset = self.trainer.test_dataloaders.dataset
-
-            report = classification_report(targets, preds, target_names=dataset.features["label"].names, digits=4)
-
-            with open(os.path.join(self.trainer.default_root_dir, "test_classification_report.txt"), "w") as f:
-                f.write(report)
+            # dataset: Dataset = self.trainer.test_dataloaders.dataset
+            #
+            # report = classification_report(
+            #     targets, preds, target_names=dataset.features["label"].names, digits=4
+            # )
+            #
+            # with open(
+            #     os.path.join(
+            #         self.trainer.default_root_dir, "test_classification_report.txt"
+            #     ),
+            #     "w",
+            # ) as f:
+            #     f.write(report)
         finally:
             self._test_outputs.clear()
+
+
+class FutureShotEmbeddingWrapperLightningModule(LightningModule):
+    def __init__(self, wrapper_model: FutureShotLightningModule) -> None:
+        super().__init__()
+
+        self._wrapped_model = wrapper_model
+
+    def forward(self, features: Dict[str, torch.Tensor]) -> torch.Tensor:
+        return self._wrapped_model.compute_embeddings(features)
