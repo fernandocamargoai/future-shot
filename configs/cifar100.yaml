@@ -41,14 +41,16 @@ data:
           is_training: True
           auto_augment: rand-m9-mstd0.5
 model:
-  encoder:
-    class_path: future_shot.extra.timm.model.TimmModel
-    init_args:
-      model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
-  embedding_dim: 128
-  num_classes: 100
-  normalize_embeddings: True
-  label_field: fine_label
+  class_path: future_shot.lightning.FutureShotLightningModule
+  init_args:
+    encoder:
+      class_path: future_shot.extra.timm.model.TimmModel
+      init_args:
+        model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
+    embedding_dim: 128
+    num_classes: 100
+    normalize_embeddings: True
+    label_field: fine_label
 
 optimizer:
   class_path: torch.optim.RAdam

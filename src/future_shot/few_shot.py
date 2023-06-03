@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from future_shot.data import FutureShotFiltering, FutureShotDataModule
-from future_shot.model import (
+from future_shot.lightning import (
     FutureShotLightningModule,
     FutureShotEmbeddingWrapperLightningModule,
 )

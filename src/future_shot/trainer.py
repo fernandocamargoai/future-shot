@@ -6,8 +6,7 @@ from pytorch_lightning import Trainer, LightningModule
 from pytorch_lightning.cli import LightningCLI, SaveConfigCallback
 
 from future_shot.data import FutureShotDataModule
-from future_shot.model import FutureShotLightningModule
-
+from future_shot.lightning import ClassifierLightningModule
 
 try:
     import wandb
@@ -89,8 +88,9 @@ class FutureShotSaveConfigCallback(SaveConfigCallback):
 
 def cli_main():
     cli = FutureShotLightningCLI(
-        FutureShotLightningModule,
+        ClassifierLightningModule,
         FutureShotDataModule,
+        subclass_mode_model=True,
         save_config_callback=FutureShotSaveConfigCallback,
     )
     # note: don't call fit!!
