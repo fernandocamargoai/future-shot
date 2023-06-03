@@ -13,10 +13,10 @@ trainer:
         monitor: val/loss
         verbose: True
   logger:
-    - class_path: pytorch_lightning.loggers.wandb.WandbLogger
-      init_args:
-        project: future-shot-banking77
-        log_model: True
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      project: future-shot-banking77
+      log_model: True
 
 data:
   batch_size: 8

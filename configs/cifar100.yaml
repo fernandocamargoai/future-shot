@@ -13,10 +13,10 @@ trainer:
         monitor: val/loss
         verbose: True
   logger:
-    - class_path: pytorch_lightning.loggers.wandb.WandbLogger
-      init_args:
-        project: future-shot-cifar100
-        log_model: True
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      project: future-shot-cifar100
+      log_model: True
 
 data:
   batch_size: 64
@@ -44,7 +44,7 @@ model:
   encoder:
     class_path: future_shot.extra.timm.model.TimmModel
     init_args:
-      model_name: resnet50
+      model_name: resnetv2_50x3_bit.goog_in21k_ft_in1k
   embedding_dim: 128
   num_classes: 100
   normalize_embeddings: True
