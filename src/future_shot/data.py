@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional, Union, List
 import datasets
 import torch
 from datasets import DatasetDict, Split
+from datasets.formatting import get_formatter
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
@@ -95,9 +96,10 @@ class FutureShotDataModule(LightningDataModule):
                 self.test_dataset = self.test_dataset.filter(self.filtering_fn)
 
         if self.preprocessing_fn is not None:
-            self.train_dataset = self.train_dataset.map(
-                self.preprocessing_fn, batched=True
-            )
+            if self.augmentation_fn is None:
+                self.train_dataset = self.train_dataset.map(
+                    self.preprocessing_fn, batched=True
+                )
             self.valid_dataset = self.valid_dataset.map(
                 self.preprocessing_fn, batched=True
             )
@@ -109,8 +111,9 @@ class FutureShotDataModule(LightningDataModule):
             self.train_dataset = self.train_dataset.with_transform(
                 self.augmentation_fn
             )
+        else:
+            self.train_dataset = self.train_dataset.with_format("torch")
 
-        self.train_dataset = self.train_dataset.with_format("torch")
         self.valid_dataset = self.valid_dataset.with_format("torch")
         self.test_dataset = self.test_dataset.with_format("torch")
 

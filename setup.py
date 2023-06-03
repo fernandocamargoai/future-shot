@@ -19,12 +19,14 @@ REQUIRED_PKGS = [
     "scikit-learn>=1.0.0",
 ]
 TRANSFORMERS_PKGS = ["sentence-transformers>=2.2.2"]
+TIMM_PKGS = ["timm>=0.9"]
 QUALITY_REQUIRE = ["black", "flake8", "isort", "tabulate"]
 ONNX_REQUIRE = ["onnxruntime", "onnx", "skl2onnx"]
 OPENVINO_REQUIRE = ["hummingbird-ml", "openvino>=2022.3"]
 TESTS_REQUIRE = ["pytest", "pytest-cov"] + ONNX_REQUIRE + OPENVINO_REQUIRE
 EXTRAS_REQUIRE = {
     "transformers": TRANSFORMERS_PKGS,
+    "timm": TIMM_PKGS,
     "wandb": ["wandb"],
     "optuna": INTEGRATIONS_REQUIRE,
     "quality": QUALITY_REQUIRE,

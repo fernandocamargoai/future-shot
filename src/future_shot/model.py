@@ -68,6 +68,7 @@ class FutureShotLightningModule(LightningModule):
         normalize_embeddings: bool = False,
         embeddings_dropout: float = 0.0,
         triplet_loss: nn.Module = None,
+        label_field: str = "label",
     ) -> None:
         super().__init__()
 
@@ -122,7 +123,7 @@ class FutureShotLightningModule(LightningModule):
     def _step(
         self, batch: Dict[str, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        labels = batch["label"]
+        labels = batch[self.hparams.label_field]
         batch_size = labels.size(0)
         anchors = self._model.normalize(self._model.compute_embeddings(batch))  # (B, E)
         positives = self._model.normalize(self._model.class_embeddings(labels))  # (B, E)
@@ -177,9 +178,9 @@ class FutureShotLightningModule(LightningModule):
     ) -> torch.Tensor:
         loss, preds = self._step(batch)
 
-        self._train_acc(preds, batch["label"])
-        self._train_micro_f1(preds, batch["label"])
-        self._train_macro_f1(preds, batch["label"])
+        self._train_acc(preds, batch[self.hparams.label_field])
+        self._train_micro_f1(preds, batch[self.hparams.label_field])
+        self._train_macro_f1(preds, batch[self.hparams.label_field])
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
@@ -209,9 +210,9 @@ class FutureShotLightningModule(LightningModule):
     ) -> torch.Tensor:
         loss, preds = self._step(batch)
 
-        self._val_acc(preds, batch["label"])
-        self._val_micro_f1(preds, batch["label"])
-        self._val_macro_f1(preds, batch["label"])
+        self._val_acc(preds, batch[self.hparams.label_field])
+        self._val_micro_f1(preds, batch[self.hparams.label_field])
+        self._val_macro_f1(preds, batch[self.hparams.label_field])
 
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/acc", self._val_acc, on_step=False, on_epoch=True, prog_bar=True)
@@ -271,9 +272,9 @@ class FutureShotLightningModule(LightningModule):
     ) -> torch.Tensor:
         loss, preds = self._step(batch)
 
-        self._test_acc(preds, batch["label"])
-        self._test_micro_f1(preds, batch["label"])
-        self._test_macro_f1(preds, batch["label"])
+        self._test_acc(preds, batch[self.hparams.label_field])
+        self._test_micro_f1(preds, batch[self.hparams.label_field])
+        self._test_macro_f1(preds, batch[self.hparams.label_field])
 
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log(
@@ -294,7 +295,7 @@ class FutureShotLightningModule(LightningModule):
             prog_bar=False,
         )
 
-        self._test_outputs.append({"targets": batch["label"], "preds": preds})
+        self._test_outputs.append({"targets": batch[self.hparams.label_field], "preds": preds})
 
         return loss
 
@@ -311,7 +312,7 @@ class FutureShotLightningModule(LightningModule):
             # dataset: Dataset = self.trainer.test_dataloaders.dataset
             #
             # report = classification_report(
-            #     targets, preds, target_names=dataset.features["label"].names, digits=4
+            #     targets, preds, target_names=dataset.features[self.hparams.label_field].names, digits=4
             # )
             #
             # with open(

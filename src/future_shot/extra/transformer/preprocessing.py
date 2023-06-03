@@ -3,19 +3,17 @@ from typing import Dict, Any, TYPE_CHECKING, List, Union
 from future_shot.data import FutureShotPreprocessing
 
 
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerBase
+import transformers
 
 
 class TokenizationFutureShotPreprocessing(FutureShotPreprocessing):
     def __init__(
         self,
-        tokenizer: Union["PreTrainedTokenizerBase", str],
+        tokenizer: Union[transformers.PreTrainedTokenizerBase, str],
         text_field: str = "text",
         max_length: int = 32,
     ) -> None:
         if isinstance(tokenizer, str):
-            import transformers
             self._tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer)
         else:
             self._tokenizer = tokenizer

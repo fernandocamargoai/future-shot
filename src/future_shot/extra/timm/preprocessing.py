@@ -1,0 +1,55 @@
+from typing import Dict, List, Any, Tuple, Optional
+
+import timm
+import timm.data
+from datasets.formatting import get_formatter, TorchFormatter
+from torchvision.transforms import Compose
+
+from future_shot.data import FutureShotPreprocessing, FutureShotAugmentation
+
+
+class TimmTransform(Compose):
+    def __new__(
+        cls,
+        model_name: str = "resnet50",
+        input_size: Optional[Tuple[int, int, int]] = None,
+        is_training: bool = False,
+        auto_augment: Optional[str] = None,
+    ) -> Compose:
+        model = timm.create_model(model_name)
+        data_cfg = timm.data.resolve_data_config(model.pretrained_cfg)
+        if input_size is not None:
+            data_cfg["input_size"] = tuple(input_size)
+        return timm.data.create_transform(
+            **data_cfg, is_training=is_training, auto_augment=auto_augment
+        )
+
+
+class TimmFutureShotPreprocessing(FutureShotPreprocessing):
+    def __init__(self, image_field: str, transform: Compose) -> None:
+        self._image_field = image_field
+        self._transform = transform
+
+    def __call__(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+        return {
+            self._image_field: [
+                self._transform(image) for image in batch[self._image_field]
+            ]
+        }
+
+
+class TimmFutureShotAugmentation(FutureShotAugmentation):
+    def __init__(self, image_field: str, transform: Compose) -> None:
+        self._image_field = image_field
+        self._transform = transform
+        self._formatter = TorchFormatter()
+
+    def __call__(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+        batch[self._image_field] = [
+            self._transform(image) for image in batch[self._image_field]
+        ]
+        batch = self._formatter.recursive_tensorize(batch)
+        for column_name in batch:
+            batch[column_name] = self._formatter._consolidate(batch[column_name])
+        return batch
+

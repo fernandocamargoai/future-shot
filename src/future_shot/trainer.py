@@ -1,5 +1,6 @@
 import os.path
 import uuid
+from typing import Dict, Optional
 
 from pytorch_lightning import Trainer, LightningModule
 from pytorch_lightning.cli import LightningCLI, SaveConfigCallback
@@ -15,12 +16,31 @@ except ModuleNotFoundError:
 
 
 class FutureShotLightningCLI(LightningCLI):
+    def add_arguments_to_parser(self, parser):
+        default_root_dir = os.path.join("experiments", str(uuid.uuid4()))
+        parser.set_defaults({"trainer.default_root_dir": default_root_dir})
+
+        parser.add_argument(
+            "--parameter_linking",
+            type=Dict[str, str],
+            default={},
+            help=(
+                "Dictionary of parameter names to link to other parameters. "
+                "The key is the source parameter and the value is the target parameter. "
+                "This allows us to specify parameter linking in the config file. "
+            ),
+        )
+
+    def _link_parameters(self, subcommand: Optional[str]):
+        if subcommand and self.config[subcommand]["parameter_linking"]:
+            for source, target in self.config[subcommand]["parameter_linking"].items():
+                self.config[subcommand][target] = self.config[subcommand][source]
+
     def before_instantiate_classes(self) -> None:
         subcommand = self.config.get("subcommand")
+        self._link_parameters(subcommand)
+
         if subcommand == "fit":
-            if self.config[subcommand]["trainer"].get("default_root_dir") is None:
-                root_dir = os.path.join("experiments", str(uuid.uuid4()))
-                self.config[subcommand]["trainer"]["default_root_dir"] = root_dir
             if self.config[subcommand]["trainer"]["logger"]:
                 loggers = (
                     self.config[subcommand]["trainer"]["logger"]
@@ -43,13 +63,9 @@ class FutureShotLightningCLI(LightningCLI):
                         id = os.path.split(
                             self.config[subcommand]["trainer"]["default_root_dir"]
                         )[1]
-                        if (
-                            "id" in logger["init_args"]
-                        ):
+                        if "id" in logger["init_args"]:
                             logger["init_args"]["id"] = id
-                        if (
-                            "version" in logger["init_args"]
-                        ):
+                        if "version" in logger["init_args"]:
                             logger["init_args"]["version"] = id
         elif subcommand in ("validate", "test"):
             self.config[subcommand]["trainer"][
