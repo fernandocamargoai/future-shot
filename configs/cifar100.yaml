@@ -60,5 +60,5 @@ optimizer:
     lr: 0.001
 
 parameter_linking:
-  model.encoder.init_args.model_name: data.preprocessing_fn.init_args.transform.init_args.model_name
-  model.embedding_dim: model.encoder.init_args.dense_layer_dim
+  model.init_args.encoder.init_args.model_name: data.preprocessing_fn.init_args.transform.init_args.model_name
+  model.init_args.embedding_dim: model.init_args.encoder.init_args.dense_layer_dim
