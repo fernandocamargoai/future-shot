@@ -5,12 +5,14 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        monitor: val/loss
-        patience: 3
+        monitor: val/acc_best
+        mode: max
+        patience: 5
         verbose: True
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
-        monitor: val/loss
+        monitor: val/acc_best
+        mode: max
         verbose: True
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
