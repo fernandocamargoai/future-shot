@@ -14,8 +14,14 @@ class TimmTransform(Compose):
         model_name: str = "resnet50",
         input_size: Optional[Tuple[int, int, int]] = None,
         is_training: bool = False,
-        scale: Optional[Tuple[float, float]] = None,
-        ratio: Optional[Tuple[float, float]] = None,
+        scale: Tuple[float, float] = (1.0, 1.0),
+        ratio: Tuple[float, float] = (1.0, 1.0),
+        hflip: float = 0.0,
+        vflip: float = 0.0,
+        brightness: Tuple[float, float] = (0.0, 0.0),
+        contrast: Tuple[float, float] = (0.0, 0.0),
+        saturation: Tuple[float, float] = (0.0, 0.0),
+        hue: Tuple[float, float] = (0.0, 0.0),
         auto_augment: Optional[str] = None,
     ) -> Compose:
         model = timm.create_model(model_name)
@@ -27,7 +33,10 @@ class TimmTransform(Compose):
             is_training=is_training,
             scale=scale,
             ratio=ratio,
-            auto_augment=auto_augment
+            hflip=hflip,
+            vflip=vflip,
+            color_jitter=(brightness, contrast, saturation, hue),
+            auto_augment=auto_augment,
         )
 
 
