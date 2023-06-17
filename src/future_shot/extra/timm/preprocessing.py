@@ -2,7 +2,7 @@ from typing import Dict, List, Any, Tuple, Optional
 
 import timm
 import timm.data
-from datasets.formatting import get_formatter, TorchFormatter
+from datasets.formatting import TorchFormatter
 from torchvision.transforms import Compose
 
 from future_shot.data import FutureShotPreprocessing, FutureShotAugmentation
@@ -14,6 +14,8 @@ class TimmTransform(Compose):
         model_name: str = "resnet50",
         input_size: Optional[Tuple[int, int, int]] = None,
         is_training: bool = False,
+        scale: Optional[Tuple[float, float]] = None,
+        ratio: Optional[Tuple[float, float]] = None,
         auto_augment: Optional[str] = None,
     ) -> Compose:
         model = timm.create_model(model_name)
@@ -21,7 +23,11 @@ class TimmTransform(Compose):
         if input_size is not None:
             data_cfg["input_size"] = tuple(input_size)
         return timm.data.create_transform(
-            **data_cfg, is_training=is_training, auto_augment=auto_augment
+            **data_cfg,
+            is_training=is_training,
+            scale=scale,
+            ratio=ratio,
+            auto_augment=auto_augment
         )
 
 
@@ -52,4 +58,3 @@ class TimmFutureShotAugmentation(FutureShotAugmentation):
         for column_name in batch:
             batch[column_name] = self._formatter._consolidate(batch[column_name])
         return batch
-
