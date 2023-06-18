@@ -23,5 +23,5 @@ class TimmModel(nn.Module):
 
     def forward(self, batch: Dict[str, Any]) -> torch.Tensor:
         features = self._model(batch[self._image_field])
-        features = self.drop(features)
+        features = self._dropout(features)
         return features
