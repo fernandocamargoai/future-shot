@@ -3,7 +3,8 @@ from typing import Dict, List, Any, Tuple, Optional
 import timm
 import timm.data
 from datasets.formatting import TorchFormatter
-from torchvision.transforms import Compose
+from timm.data import ToTensor
+from torchvision.transforms import Compose, AutoAugmentPolicy, Normalize, Resize, AutoAugment
 
 from future_shot.data import FutureShotPreprocessing, FutureShotAugmentation
 
@@ -38,6 +39,25 @@ class TimmTransform(Compose):
             color_jitter=(brightness, contrast, saturation, hue),
             auto_augment=auto_augment,
         )
+
+
+class TimmTransformWithAutoAugmentPolicy(Compose):
+    def __new__(
+        cls,
+        model_name: str = "resnet50",
+        input_size: Optional[Tuple[int, int, int]] = None,
+        policy: AutoAugmentPolicy = AutoAugmentPolicy.IMAGENET,
+    ) -> Compose:
+        model = timm.create_model(model_name)
+        data_cfg = timm.data.resolve_data_config(model.pretrained_cfg)
+        if input_size is not None:
+            data_cfg["input_size"] = tuple(input_size)
+
+        transform = timm.data.create_transform(**data_cfg)
+
+        transform.transforms.insert(-2, AutoAugment(policy=policy))
+
+        return transform
 
 
 class TimmFutureShotPreprocessing(FutureShotPreprocessing):
