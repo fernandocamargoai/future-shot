@@ -75,19 +75,26 @@ class FutureShotDataModule(LightningDataModule):
         self.augmentation_fn = augmentation_fn
         self.transform_fn = transform_fn
 
+    def _split_train_into_train_and_validation(self) -> None:
+        split_dataset = self.dataset[Split.TRAIN].train_test_split(
+            self.hparams.validation_split,
+            seed=self.hparams.seed,
+            stratify_by_column=self.hparams.stratify_by_column,
+        )
+        self.train_dataset = split_dataset[Split.TRAIN]
+        self.valid_dataset = split_dataset[Split.TEST]
+
     def prepare_data(self) -> None:
-        if Split.VALIDATION not in self.dataset:
-            split_dataset = self.dataset[Split.TRAIN].train_test_split(
-                self.hparams.validation_split,
-                seed=self.hparams.seed,
-                stratify_by_column=self.hparams.stratify_by_column,
-            )
-            self.train_dataset = split_dataset[Split.TRAIN]
-            self.valid_dataset = split_dataset[Split.TEST]
+        if Split.TEST not in self.dataset and Split.VALIDATION in self.dataset:
+            self.test_dataset = self.dataset[Split.VALIDATION]
+            self._split_train_into_train_and_validation()
         else:
-            self.train_dataset = self.dataset[Split.TRAIN]
-            self.valid_dataset = self.dataset[Split.VALIDATION]
-        self.test_dataset = self.dataset[Split.TEST]
+            self.test_dataset = self.dataset[Split.TEST]
+            if Split.VALIDATION not in self.dataset:
+                self._split_train_into_train_and_validation()
+            else:
+                self.train_dataset = self.dataset[Split.TRAIN]
+                self.valid_dataset = self.dataset[Split.VALIDATION]
 
         if self.filtering_fn is not None:
             self.train_dataset = self.train_dataset.filter(self.filtering_fn)
