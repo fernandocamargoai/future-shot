@@ -68,7 +68,7 @@ class TimmFutureShotPreprocessing(FutureShotPreprocessing):
     def __call__(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
         return {
             self._image_field: [
-                self._transform(image) for image in batch[self._image_field]
+                self._transform(image.convert("RGB")) for image in batch[self._image_field]
             ]
         }
 
@@ -81,7 +81,7 @@ class TimmFutureShotAugmentation(FutureShotAugmentation):
 
     def __call__(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
         batch[self._image_field] = [
-            self._transform(image) for image in batch[self._image_field]
+            self._transform(image.convert("RGB")) for image in batch[self._image_field]
         ]
         batch = self._formatter.recursive_tensorize(batch)
         for column_name in batch:
