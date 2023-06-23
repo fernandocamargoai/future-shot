@@ -19,9 +19,9 @@ class TimmTransform(Compose):
         ratio: Tuple[float, float] = (1.0, 1.0),
         hflip: float = 0.0,
         vflip: float = 0.0,
-        brightness: Tuple[float, float] = (0.0, 0.0),
-        contrast: Tuple[float, float] = (0.0, 0.0),
-        saturation: Tuple[float, float] = (0.0, 0.0),
+        brightness: Tuple[float, float] = (1.0, 1.0),
+        contrast: Tuple[float, float] = (1.0, 1.0),
+        saturation: Tuple[float, float] = (1.0, 1.0),
         hue: Tuple[float, float] = (0.0, 0.0),
         auto_augment: Optional[str] = None,
     ) -> Compose:
