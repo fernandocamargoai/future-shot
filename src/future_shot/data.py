@@ -53,6 +53,9 @@ class FutureShotDataModule(LightningDataModule):
         preprocessing_fn: Optional[FutureShotPreprocessing] = None,
         augmentation_fn: Optional[FutureShotAugmentation] = None,
         transform_fn: Optional[FutureShotTransformation] = None,
+        train_split_key: str = "train",
+        validation_split_key: str = "validation",
+        test_split_key: str = "test",
     ) -> None:
         super().__init__()
 
@@ -75,26 +78,30 @@ class FutureShotDataModule(LightningDataModule):
         self.augmentation_fn = augmentation_fn
         self.transform_fn = transform_fn
 
+        self.train_split_key = train_split_key
+        self.validation_split_key = validation_split_key
+        self.test_split_key = test_split_key
+
     def _split_train_into_train_and_validation(self) -> None:
-        split_dataset = self.dataset[Split.TRAIN].train_test_split(
+        split_dataset = self.dataset[self.train_split_key].train_test_split(
             self.hparams.validation_split,
             seed=self.hparams.seed,
             stratify_by_column=self.hparams.stratify_by_column,
         )
-        self.train_dataset = split_dataset[Split.TRAIN]
-        self.valid_dataset = split_dataset[Split.TEST]
+        self.train_dataset = split_dataset[self.train_split_key]
+        self.valid_dataset = split_dataset[self.test_split_key]
 
     def prepare_data(self) -> None:
-        if Split.TEST not in self.dataset and Split.VALIDATION in self.dataset:
-            self.test_dataset = self.dataset[Split.VALIDATION]
+        if self.test_split_key not in self.dataset and self.validation_split_key in self.dataset:
+            self.test_dataset = self.dataset[self.validation_split_key]
             self._split_train_into_train_and_validation()
         else:
-            self.test_dataset = self.dataset[Split.TEST]
-            if Split.VALIDATION not in self.dataset:
+            self.test_dataset = self.dataset[self.test_split_key]
+            if self.validation_split_key not in self.dataset:
                 self._split_train_into_train_and_validation()
             else:
-                self.train_dataset = self.dataset[Split.TRAIN]
-                self.valid_dataset = self.dataset[Split.VALIDATION]
+                self.train_dataset = self.dataset[self.train_split_key]
+                self.valid_dataset = self.dataset[self.validation_split_key]
 
         if self.filtering_fn is not None:
             self.train_dataset = self.train_dataset.filter(self.filtering_fn)
