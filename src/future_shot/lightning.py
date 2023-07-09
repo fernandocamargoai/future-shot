@@ -334,4 +334,4 @@ class SoftmaxLightningModule(ClassifierLightningModule):
         logits = self._model(batch)
         loss = self._loss(logits, batch[self.hparams.label_field])
 
-        return loss, torch.softmax(logits, dim=0)
+        return loss, torch.softmax(logits, dim=1)
