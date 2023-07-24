@@ -97,6 +97,7 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
             FutureShotLightningModule,
             FutureShotDataModule,
             args=args,
+            subclass_mode_model=True,
             run=False,
             save_config_callback=None,
         )
