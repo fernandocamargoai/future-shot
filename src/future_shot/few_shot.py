@@ -116,6 +116,7 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
         )
         few_shot_labels = filtering_fn.labels
         data.filtering_fn = None
+        data.augmentation_fn = None
 
         data.prepare_data()
 
