@@ -1,7 +1,7 @@
 import hashlib
 import os.path
 from glob import glob
-from typing import Dict, Any, List, Union, cast
+from typing import Dict, Any, List, Union, cast, Tuple
 
 import numpy as np
 import pandas as pd
@@ -80,94 +80,6 @@ class FewShotSplit(object):
             yield train, test
 
 
-def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) -> pd.DataFrame:
-    metrics = []
-    for experiment_dir_path in tqdm(experiment_dir_paths, desc="Evaluating few-shot for each experiment"):
-        config_path = os.path.join(experiment_dir_path, "config.yaml")
-        checkpoint_path = glob(
-            os.path.join(experiment_dir_path, "**", "*.ckpt"), recursive=True
-        )[0]
-
-        config = yaml.load(open(config_path, "r"), Loader=yaml.FullLoader)
-        args = {key: value for key, value in config.items() if key in ("model", "data", "seed_everything")}
-        args["trainer"] = {
-            "precision": config["trainer"]["precision"],
-        }
-        cli = FutureShotLightningCLI(
-            FutureShotLightningModule,
-            FutureShotDataModule,
-            args=args,
-            subclass_mode_model=True,
-            run=False,
-            save_config_callback=None,
-        )
-
-        data: FutureShotDataModule = cli.datamodule
-        model: FutureShotLightningModule = cli.model
-        model.load_state_dict(torch.load(checkpoint_path, map_location=model.device)["state_dict"])
-        trainer: Trainer = cli.trainer
-        trainer.logger = None
-
-        # __main__.FilterOutLabelsFiltering is different from future_shot.few_shot.FilterOutLabelsFiltering,
-        # making instance() not work
-        assert "FilterOutLabelsFiltering" in str(type(data.filtering_fn))
-        filtering_fn: FilterOutLabelsFiltering = cast(
-            FilterOutLabelsFiltering, data.filtering_fn
-        )
-        few_shot_labels = filtering_fn.labels
-        data.filtering_fn = None
-        data.augmentation_fn = None
-
-        data.prepare_data()
-
-        label_field = model.hparams.label_field
-        few_shot_train_dataset = data.train_dataset.filter(
-            lambda example: int(example[label_field]) in few_shot_labels, keep_in_memory=True,
-        )
-
-        few_shot_train_dataloader = DataLoader(
-            dataset=few_shot_train_dataset,
-            batch_size=data.hparams.batch_size,
-            num_workers=data.hparams.num_workers,
-            pin_memory=data.hparams.pin_memory,
-            shuffle=False,
-        )
-
-        embeddings_batches = trainer.predict(
-            FutureShotEmbeddingWrapperLightningModule(model),
-            dataloaders=few_shot_train_dataloader,
-            return_predictions=True,
-        )
-        embeddings = torch.cat(embeddings_batches, dim=0)
-
-        labels = few_shot_train_dataset[label_field].cpu().detach().numpy()
-        for train_indices, _ in tqdm(
-            splitter.split(X=None, y=labels, groups=labels), total=splitter.n_splits
-        ):
-            train_labels = labels[train_indices]
-
-            for few_shot_label in few_shot_labels:
-                mask = train_labels == few_shot_label
-                new_label_embeddings = embeddings[np.array(train_indices)[mask]]
-                model._model._class_embedding.weight.data[few_shot_label] = new_label_embeddings.mean(
-                    dim=0
-                )
-
-            few_shot_test_dataloader = DataLoader(
-                dataset=data.test_dataset,
-                batch_size=data.hparams.batch_size,
-                num_workers=data.hparams.num_workers,
-                pin_memory=data.hparams.pin_memory,
-                shuffle=False,
-            )
-
-            metrics.append(
-                trainer.test(model, dataloaders=few_shot_test_dataloader)
-            )
-
-    return pd.DataFrame(data=metrics)
-
-
 def fit(
     config_path: str,
     num_classes: int,
@@ -214,12 +126,144 @@ def fit(
             os.system(command)
 
 
+def _load_from_experiment_dir(
+    experiment_dir_path,
+) -> Tuple[
+    FutureShotLightningModule, Trainer, FutureShotDataModule, FilterOutLabelsFiltering
+]:
+    config_path = os.path.join(experiment_dir_path, "config.yaml")
+    checkpoint_path = glob(
+        os.path.join(experiment_dir_path, "**", "*.ckpt"), recursive=True
+    )[0]
+
+    config = yaml.load(open(config_path, "r"), Loader=yaml.FullLoader)
+    args = {
+        key: value
+        for key, value in config.items()
+        if key in ("model", "data", "seed_everything")
+    }
+    args["trainer"] = {
+        "precision": config["trainer"]["precision"],
+    }
+
+    cli = FutureShotLightningCLI(
+        FutureShotLightningModule,
+        FutureShotDataModule,
+        args=args,
+        subclass_mode_model=True,
+        run=False,
+        save_config_callback=None,
+    )
+
+    model: FutureShotLightningModule = cli.model
+    model.load_state_dict(
+        torch.load(checkpoint_path, map_location=model.device)["state_dict"]
+    )
+
+    trainer: Trainer = cli.trainer
+    trainer.logger = None
+
+    data: FutureShotDataModule = cli.datamodule
+    # __main__.FilterOutLabelsFiltering is different from future_shot.few_shot.FilterOutLabelsFiltering,
+    # making instance() not work
+    assert "FilterOutLabelsFiltering" in str(type(data.filtering_fn))
+    filtering_fn: FilterOutLabelsFiltering = cast(
+        FilterOutLabelsFiltering, data.filtering_fn
+    )
+    data.filtering_fn = None
+    data.augmentation_fn = None
+    data.prepare_data()
+
+    return model, trainer, data, filtering_fn
+
+
+def _generate_embeddings_for_train_set(experiment_dir_path: str) -> str:
+    training_embeddings_path = os.path.join(
+        experiment_dir_path, "training_embeddings.npy"
+    )
+    if not os.path.exists(training_embeddings_path):
+        model, trainer, data, filtering_fn = _load_from_experiment_dir(
+            experiment_dir_path
+        )
+
+        train_dataloader = DataLoader(
+            dataset=data.train_dataset,
+            batch_size=data.hparams.batch_size,
+            num_workers=data.hparams.num_workers,
+            pin_memory=data.hparams.pin_memory,
+            shuffle=False,
+        )
+
+        embeddings_batches = trainer.predict(
+            FutureShotEmbeddingWrapperLightningModule(model),
+            dataloaders=train_dataloader,
+            return_predictions=True,
+        )
+        embeddings_tensor = torch.cat(embeddings_batches, dim=0)
+
+        embeddings: np.ndarray = embeddings_tensor.cpu().numpy()
+        np.save(training_embeddings_path, embeddings)
+
+    return training_embeddings_path
+
+
+def _evaluate_few_shot(
+    splitter: FewShotSplit, experiment_dir_paths: List[str], embedding_paths: List[str]
+) -> pd.DataFrame:
+    metrics = []
+    for experiment_dir_path, embedding_path in tqdm(
+        zip(experiment_dir_paths, embedding_paths), desc="Evaluating few-shot for each experiment"
+    ):
+        model, trainer, data, filtering_fn = _load_from_experiment_dir(
+            experiment_dir_path
+        )
+
+        label_field = model.hparams.label_field
+
+        embeddings = np.load(embedding_path)
+        labels = data.train_dataset[label_field].cpu().detach().numpy()
+
+        few_shot_mask = np.array([int(label) in filtering_fn.labels for label in labels])
+
+        few_shot_embeddings = torch.tensor(embeddings[few_shot_mask]).to(model.device)
+        few_shot_labels = labels[few_shot_mask]
+
+        for train_indices, _ in tqdm(
+            splitter.split(X=None, y=few_shot_labels, groups=few_shot_labels), total=splitter.n_splits
+        ):
+            train_labels = few_shot_labels[train_indices]
+
+            for few_shot_label in few_shot_labels:
+                mask = train_labels == few_shot_label
+                new_label_embeddings = few_shot_embeddings[np.array(train_indices)[mask]]
+                model._model._class_embedding.weight.data[
+                    few_shot_label
+                ] = new_label_embeddings.mean(dim=0)
+
+            few_shot_test_dataloader = DataLoader(
+                dataset=data.test_dataset,
+                batch_size=data.hparams.batch_size,
+                num_workers=data.hparams.num_workers,
+                pin_memory=data.hparams.pin_memory,
+                shuffle=False,
+            )
+
+            metrics.append(trainer.test(model, dataloaders=few_shot_test_dataloader))
+
+    return pd.DataFrame(data=metrics)
+
+
 def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
     experiment_dir_paths = glob(os.path.join(experiments_dir_path, "*"))
     experiment_dir_paths = [
         experiment_dir_path
         for experiment_dir_path in experiment_dir_paths
         if os.path.isdir(experiment_dir_path)
+    ]
+
+    embeddings_paths = [
+        _generate_embeddings_for_train_set(experiment_dir_path)
+        for experiment_dir_path in tqdm(experiment_dir_paths, desc="Generating embeddings for each experiment")
     ]
 
     for train_size in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1):
@@ -231,9 +275,16 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
                 random_state=seed,
             ),
             experiment_dir_paths,
+            embeddings_paths,
         )
-        print("Saving results to %s" % os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"))
-        df.to_csv(os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"), index=False)
+        print(
+            "Saving results to %s"
+            % os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv")
+        )
+        df.to_csv(
+            os.path.join(experiments_dir_path, f"few_shot_results_{train_size}.csv"),
+            index=False,
+        )
 
 
 def download_wandb_artifacts(
