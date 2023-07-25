@@ -177,7 +177,12 @@ def _load_from_experiment_dir(
     return model, trainer, data, filtering_fn
 
 
-def _generate_embeddings_for_train_set(experiment_dir_path: str, num_workers: int = None) -> str:
+def _generate_embeddings_for_train_set(
+    experiment_dir_path: str,
+    batch_size: int = None,
+    num_workers: int = None,
+    prefetch_factor: int = None,
+) -> str:
     training_embeddings_path = os.path.join(
         experiment_dir_path, "training_embeddings.npy"
     )
@@ -188,9 +193,14 @@ def _generate_embeddings_for_train_set(experiment_dir_path: str, num_workers: in
 
         train_dataloader = DataLoader(
             dataset=data.train_dataset,
-            batch_size=data.hparams.batch_size,
-            num_workers=num_workers if num_workers is not None else data.hparams.num_workers,
+            batch_size=batch_size
+            if batch_size is not None
+            else data.hparams.batch_size,
+            num_workers=num_workers
+            if num_workers is not None
+            else data.hparams.num_workers,
             pin_memory=data.hparams.pin_memory,
+            prefetch_factor=prefetch_factor,
             shuffle=False,
         )
 
@@ -208,11 +218,17 @@ def _generate_embeddings_for_train_set(experiment_dir_path: str, num_workers: in
 
 
 def _evaluate_few_shot(
-    splitter: FewShotSplit, experiment_dir_paths: List[str], embedding_paths: List[str], num_workers: int = None
+    splitter: FewShotSplit,
+    experiment_dir_paths: List[str],
+    embedding_paths: List[str],
+    batch_size: int = None,
+    num_workers: int = None,
+    prefetch_factor: int = None,
 ) -> pd.DataFrame:
     metrics = []
     for experiment_dir_path, embedding_path in tqdm(
-        zip(experiment_dir_paths, embedding_paths), desc="Evaluating few-shot for each experiment"
+        zip(experiment_dir_paths, embedding_paths),
+        desc="Evaluating few-shot for each experiment",
     ):
         model, trainer, data, filtering_fn = _load_from_experiment_dir(
             experiment_dir_path
@@ -223,28 +239,38 @@ def _evaluate_few_shot(
         embeddings = np.load(embedding_path)
         labels = data.train_dataset[label_field].cpu().detach().numpy()
 
-        few_shot_mask = np.array([int(label) in filtering_fn.labels for label in labels])
+        few_shot_mask = np.array(
+            [int(label) in filtering_fn.labels for label in labels]
+        )
 
         few_shot_embeddings = torch.tensor(embeddings[few_shot_mask]).to(model.device)
         few_shot_labels = labels[few_shot_mask]
 
         for train_indices, _ in tqdm(
-            splitter.split(X=None, y=few_shot_labels, groups=few_shot_labels), total=splitter.n_splits
+            splitter.split(X=None, y=few_shot_labels, groups=few_shot_labels),
+            total=splitter.n_splits,
         ):
             train_labels = few_shot_labels[train_indices]
 
             for few_shot_label in few_shot_labels:
                 mask = train_labels == few_shot_label
-                new_label_embeddings = few_shot_embeddings[np.array(train_indices)[mask]]
+                new_label_embeddings = few_shot_embeddings[
+                    np.array(train_indices)[mask]
+                ]
                 model._model._class_embedding.weight.data[
                     few_shot_label
                 ] = new_label_embeddings.mean(dim=0)
 
             few_shot_test_dataloader = DataLoader(
                 dataset=data.test_dataset,
-                batch_size=data.hparams.batch_size,
-                num_workers=num_workers if num_workers is not None else data.hparams.num_workers,
+                batch_size=batch_size
+                if batch_size is not None
+                else data.hparams.batch_size,
+                num_workers=num_workers
+                if num_workers is not None
+                else data.hparams.num_workers,
                 pin_memory=data.hparams.pin_memory,
+                prefetch_factor=prefetch_factor,
                 shuffle=False,
             )
 
@@ -253,7 +279,14 @@ def _evaluate_few_shot(
     return pd.DataFrame(data=metrics)
 
 
-def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42, num_workers: int = None) -> None:
+def test(
+    experiments_dir_path: str,
+    n_splits: int = 1000,
+    seed: int = 42,
+    batch_size: int = None,
+    num_workers: int = None,
+    prefetch_factor: int = None,
+) -> None:
     experiment_dir_paths = glob(os.path.join(experiments_dir_path, "*"))
     experiment_dir_paths = [
         experiment_dir_path
@@ -262,8 +295,15 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42, num_wo
     ]
 
     embeddings_paths = [
-        _generate_embeddings_for_train_set(experiment_dir_path, num_workers=num_workers)
-        for experiment_dir_path in tqdm(experiment_dir_paths, desc="Generating embeddings for each experiment")
+        _generate_embeddings_for_train_set(
+            experiment_dir_path,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            prefetch_factor=prefetch_factor,
+        )
+        for experiment_dir_path in tqdm(
+            experiment_dir_paths, desc="Generating embeddings for each experiment"
+        )
     ]
 
     for train_size in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1):
@@ -276,7 +316,9 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42, num_wo
             ),
             experiment_dir_paths,
             embeddings_paths,
+            batch_size=batch_size,
             num_workers=num_workers,
+            prefetch_factor=prefetch_factor,
         )
         print(
             "Saving results to %s"
