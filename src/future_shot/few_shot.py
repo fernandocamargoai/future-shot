@@ -177,7 +177,7 @@ def _load_from_experiment_dir(
     return model, trainer, data, filtering_fn
 
 
-def _generate_embeddings_for_train_set(experiment_dir_path: str) -> str:
+def _generate_embeddings_for_train_set(experiment_dir_path: str, num_workers: int = None) -> str:
     training_embeddings_path = os.path.join(
         experiment_dir_path, "training_embeddings.npy"
     )
@@ -189,7 +189,7 @@ def _generate_embeddings_for_train_set(experiment_dir_path: str) -> str:
         train_dataloader = DataLoader(
             dataset=data.train_dataset,
             batch_size=data.hparams.batch_size,
-            num_workers=data.hparams.num_workers,
+            num_workers=num_workers or data.hparams.num_workers,
             pin_memory=data.hparams.pin_memory,
             shuffle=False,
         )
@@ -208,7 +208,7 @@ def _generate_embeddings_for_train_set(experiment_dir_path: str) -> str:
 
 
 def _evaluate_few_shot(
-    splitter: FewShotSplit, experiment_dir_paths: List[str], embedding_paths: List[str]
+    splitter: FewShotSplit, experiment_dir_paths: List[str], embedding_paths: List[str], num_workers: int = None
 ) -> pd.DataFrame:
     metrics = []
     for experiment_dir_path, embedding_path in tqdm(
@@ -243,7 +243,7 @@ def _evaluate_few_shot(
             few_shot_test_dataloader = DataLoader(
                 dataset=data.test_dataset,
                 batch_size=data.hparams.batch_size,
-                num_workers=data.hparams.num_workers,
+                num_workers=num_workers or data.hparams.num_workers,
                 pin_memory=data.hparams.pin_memory,
                 shuffle=False,
             )
@@ -253,7 +253,7 @@ def _evaluate_few_shot(
     return pd.DataFrame(data=metrics)
 
 
-def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
+def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42, num_workers: int = None) -> None:
     experiment_dir_paths = glob(os.path.join(experiments_dir_path, "*"))
     experiment_dir_paths = [
         experiment_dir_path
@@ -262,7 +262,7 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
     ]
 
     embeddings_paths = [
-        _generate_embeddings_for_train_set(experiment_dir_path)
+        _generate_embeddings_for_train_set(experiment_dir_path, num_workers=num_workers)
         for experiment_dir_path in tqdm(experiment_dir_paths, desc="Generating embeddings for each experiment")
     ]
 
@@ -276,6 +276,7 @@ def test(experiments_dir_path: str, n_splits: int = 1000, seed: int = 42):
             ),
             experiment_dir_paths,
             embeddings_paths,
+            num_workers=num_workers,
         )
         print(
             "Saving results to %s"
