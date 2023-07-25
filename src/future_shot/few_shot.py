@@ -120,8 +120,9 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
 
         data.prepare_data()
 
+        label_field = model.hparams.label_field
         few_shot_train_dataset = data.train_dataset.filter(
-            lambda example: int(example["label"]) in few_shot_labels
+            lambda example: int(example[label_field]) in few_shot_labels, keep_in_memory=True,
         )
 
         few_shot_train_dataloader = DataLoader(
@@ -139,7 +140,7 @@ def _evaluate_few_shot(splitter: FewShotSplit, experiment_dir_paths: List[str]) 
         )
         embeddings = torch.cat(embeddings_batches, dim=0)
 
-        labels = few_shot_train_dataset["label"].cpu().detach().numpy()
+        labels = few_shot_train_dataset[label_field].cpu().detach().numpy()
         for train_indices, _ in tqdm(
             splitter.split(X=None, y=labels, groups=labels), total=splitter.n_splits
         ):
