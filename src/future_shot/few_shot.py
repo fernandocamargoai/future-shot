@@ -189,7 +189,7 @@ def _generate_embeddings_for_train_set(experiment_dir_path: str, num_workers: in
         train_dataloader = DataLoader(
             dataset=data.train_dataset,
             batch_size=data.hparams.batch_size,
-            num_workers=num_workers or data.hparams.num_workers,
+            num_workers=num_workers if num_workers is not None else data.hparams.num_workers,
             pin_memory=data.hparams.pin_memory,
             shuffle=False,
         )
@@ -243,7 +243,7 @@ def _evaluate_few_shot(
             few_shot_test_dataloader = DataLoader(
                 dataset=data.test_dataset,
                 batch_size=data.hparams.batch_size,
-                num_workers=num_workers or data.hparams.num_workers,
+                num_workers=num_workers if num_workers is not None else data.hparams.num_workers,
                 pin_memory=data.hparams.pin_memory,
                 shuffle=False,
             )
