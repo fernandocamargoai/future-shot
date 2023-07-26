@@ -118,7 +118,7 @@ class FutureShotDataModule(LightningDataModule):
                 self.preprocessing_fn, batched=True
             )
             self.test_dataset = self.test_dataset.map(
-                self.preprocessing_fn, batched=True
+                self.preprocessing_fn, batched=True, keep_in_memory=True, # TODO: remove keep_in_memory
             )
 
         if self.augmentation_fn is not None:
