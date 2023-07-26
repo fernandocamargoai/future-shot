@@ -187,7 +187,7 @@ def _load_from_experiment_dir(
 
     # TODO: Remove it. Temporary solution to increase speed
     size = data.preprocessing_fn._transform.transforms[0].size
-    data.test_dataset.cast_column(data.preprocessing_fn._image_field, Array3D(shape=(size, size, 3), dtype="float32"))
+    data.test_dataset.cast_column(data.preprocessing_fn._image_field, Array3D(shape=(3, size, size), dtype="float32"))
     # data.test_dataset.reset_format()
     # data.test_dataset = data.test_dataset.with_transform(
     #     augmentation_fn
