@@ -171,8 +171,25 @@ def _load_from_experiment_dir(
         FilterOutLabelsFiltering, data.filtering_fn
     )
     data.filtering_fn = None
+    # TODO: Remove it. Temporary solution to increase speed
+    from future_shot.extra.timm.preprocessing import TimmFutureShotPreprocessing, TimmFutureShotAugmentation
+    preprocessing_fn: TimmFutureShotPreprocessing = data.preprocessing_fn
+    data.preprocessing_fn = None
+    image_field = preprocessing_fn._image_field
+    transform = preprocessing_fn._transform
+    augmentation_fn = TimmFutureShotAugmentation(image_field, transform)
+    # TODO: Up to here
+
     data.augmentation_fn = None
+
     data.prepare_data()
+
+    # TODO: Remove it. Temporary solution to increase speed
+    data.test_dataset.reset_format()
+    data.test_data = data.test_data.with_transform(
+        augmentation_fn
+    )
+    # TODO: Up to here
 
     return model, trainer, data, filtering_fn
 
