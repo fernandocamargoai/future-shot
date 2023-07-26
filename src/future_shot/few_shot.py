@@ -8,6 +8,7 @@ import pandas as pd
 import torch
 import wandb
 import yaml
+from datasets import Array3D
 from jsonargparse import CLI
 from pytorch_lightning import Trainer
 from sklearn.utils import check_array, check_random_state, indexable
@@ -184,7 +185,9 @@ def _load_from_experiment_dir(
 
     data.prepare_data()
 
-    # # TODO: Remove it. Temporary solution to increase speed
+    # TODO: Remove it. Temporary solution to increase speed
+    size = data.preprocessing_fn._transform.transforms[0].size
+    data.test_dataset.cast_column(data.preprocessing_fn._image_field, Array3D(shape=(size, size, 3), dtype="float32"))
     # data.test_dataset.reset_format()
     # data.test_dataset = data.test_dataset.with_transform(
     #     augmentation_fn
