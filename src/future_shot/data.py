@@ -129,7 +129,8 @@ class FutureShotDataModule(LightningDataModule):
             self.train_dataset = self.train_dataset.with_format("torch")
 
         self.valid_dataset = self.valid_dataset.with_format("torch")
-        self.test_dataset = self.test_dataset.with_format("torch")
+        # self.test_dataset = self.test_dataset.with_format("torch")
+        self.test_dataset = self.test_dataset.with_format("numpy") # TODO: remove this line
 
     def train_dataloader(self):
         return DataLoader(
