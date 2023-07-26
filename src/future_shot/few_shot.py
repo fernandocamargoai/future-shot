@@ -243,22 +243,28 @@ def _evaluate_few_shot(
     prefetch_factor: int = None,
 ) -> pd.DataFrame:
     metrics = []
+    # TODO: Remove it. Temporary solution to increase speed
+    data = None
+    labels = None
+    few_shot_mask = None
     for experiment_dir_path, embedding_path in tqdm(
         zip(experiment_dir_paths, embedding_paths),
         desc="Evaluating few-shot for each experiment",
     ):
-        model, trainer, data, filtering_fn = _load_from_experiment_dir(
+        model, trainer, temp_data, filtering_fn = _load_from_experiment_dir(
             experiment_dir_path
         )
-
         label_field = model.hparams.label_field
+        # TODO: Remove it. Temporary solution to increase speed
+        if data is None:
+            data = temp_data
+            labels = data.train_dataset[label_field].cpu().detach().numpy()
+
+            few_shot_mask = np.array(
+                [int(label) in filtering_fn.labels for label in labels]
+            )
 
         embeddings = np.load(embedding_path)
-        labels = data.train_dataset[label_field].cpu().detach().numpy()
-
-        few_shot_mask = np.array(
-            [int(label) in filtering_fn.labels for label in labels]
-        )
 
         few_shot_embeddings = torch.tensor(embeddings[few_shot_mask]).to(model.device)
         few_shot_labels = labels[few_shot_mask]
