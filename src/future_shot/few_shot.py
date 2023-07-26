@@ -309,11 +309,15 @@ def _evaluate_few_shot(
 def test(
     experiments_dir_path: str,
     n_splits: int = 1000,
+    train_sizes: List[float] = None,
     seed: int = 42,
     batch_size: int = None,
     num_workers: int = None,
     prefetch_factor: int = None,
 ) -> None:
+    if train_sizes is None:
+        train_sizes = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1]
+
     experiment_dir_paths = glob(os.path.join(experiments_dir_path, "*"))
     experiment_dir_paths = [
         experiment_dir_path
@@ -333,7 +337,7 @@ def test(
         )
     ]
 
-    for train_size in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1):
+    for train_size in train_sizes:
         print("Evaluating for train_size=%s" % str(train_size))
         df = _evaluate_few_shot(
             FewShotSplit(
