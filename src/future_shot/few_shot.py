@@ -187,9 +187,11 @@ def _load_from_experiment_dir(
 
     # TODO: Remove it. Temporary solution to increase speed
     data.test_dataset.reset_format()
+
     data.test_dataset = data.test_dataset.with_transform(
         augmentation_fn
     )
+    data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
     # # TODO: Up to here
 
     return model, trainer, data, filtering_fn
@@ -248,6 +250,7 @@ def _evaluate_few_shot(
     data = None
     labels = None
     few_shot_mask = None
+    # TODO: Up to here
     for experiment_dir_path, embedding_path in tqdm(
         zip(experiment_dir_paths, embedding_paths),
         desc="Evaluating few-shot for each experiment",
