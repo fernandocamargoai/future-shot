@@ -186,7 +186,7 @@ def _load_from_experiment_dir(
 
     # TODO: Remove it. Temporary solution to increase speed
     data.test_dataset.reset_format()
-    data.test_data = data.test_data.with_transform(
+    data.test_dataset = data.test_dataset.with_transform(
         augmentation_fn
     )
     # TODO: Up to here
