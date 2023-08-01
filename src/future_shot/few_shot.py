@@ -380,7 +380,4 @@ def download_wandb_artifacts(
 
 
 if __name__ == "__main__":
-    for i in range(1000):
-        import time
-        time.sleep(1)
     CLI([fit, test, download_wandb_artifacts])
