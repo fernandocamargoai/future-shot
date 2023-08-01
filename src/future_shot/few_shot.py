@@ -192,7 +192,7 @@ def _load_from_experiment_dir(
         augmentation_fn
     )
     data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
-    # # TODO: Up to here
+    # # # TODO: Up to here
 
     return model, trainer, data, filtering_fn
 
@@ -270,7 +270,7 @@ def _evaluate_few_shot(
 
         embeddings = np.load(embedding_path)
 
-        few_shot_embeddings = torch.tensor(embeddings[few_shot_mask]).to(model.device)
+        few_shot_embeddings = torch.tensor(embeddings[few_shot_mask])
         few_shot_labels = labels[few_shot_mask]
 
         for train_indices, _ in tqdm(
@@ -286,7 +286,7 @@ def _evaluate_few_shot(
                 ]
                 model._model._class_embedding.weight.data[
                     few_shot_label
-                ] = new_label_embeddings.mean(dim=0)
+                ] = new_label_embeddings.mean(dim=0).to(model.device)
 
             few_shot_test_dataloader = DataLoader(
                 dataset=data.test_dataset,
@@ -380,4 +380,7 @@ def download_wandb_artifacts(
 
 
 if __name__ == "__main__":
+    for i in range(1000):
+        import time
+        time.sleep(1)
     CLI([fit, test, download_wandb_artifacts])
