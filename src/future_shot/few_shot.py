@@ -172,27 +172,10 @@ def _load_from_experiment_dir(
         FilterOutLabelsFiltering, data.filtering_fn
     )
     data.filtering_fn = None
-    # TODO: Remove it. Temporary solution to increase speed
-    from future_shot.extra.timm.preprocessing import TimmFutureShotPreprocessing, TimmFutureShotAugmentation
-    preprocessing_fn: TimmFutureShotPreprocessing = data.preprocessing_fn
-    data.preprocessing_fn = None
-    image_field = preprocessing_fn._image_field
-    transform = preprocessing_fn._transform
-    augmentation_fn = TimmFutureShotAugmentation(image_field, transform)
-    # TODO: Up to here
 
-    data.augmentation_fn = None
-
-    data.prepare_data()
-
-    # TODO: Remove it. Temporary solution to increase speed
-    data.test_dataset.reset_format()
-
-    data.test_dataset = data.test_dataset.with_transform(
-        augmentation_fn
-    )
-    data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
-    # # # TODO: Up to here
+    # TODO: uncomment it
+    # data.augmentation_fn = None
+    # data.prepare_data()
 
     return model, trainer, data, filtering_fn
 
@@ -267,6 +250,37 @@ def _evaluate_few_shot(
             few_shot_mask = np.array(
                 [int(label) in filtering_fn.labels for label in labels]
             )
+
+            # TODO: Remove it. Temporary solution to increase speed
+            from future_shot.extra.timm.preprocessing import TimmFutureShotPreprocessing, TimmFutureShotAugmentation
+            preprocessing_fn: TimmFutureShotPreprocessing = data.preprocessing_fn
+            data.preprocessing_fn = None
+            image_field = preprocessing_fn._image_field
+            transform = preprocessing_fn._transform
+            augmentation_fn = TimmFutureShotAugmentation(image_field, transform)
+
+            data.augmentation_fn = None
+
+            data.prepare_data()
+
+            # TODO: Remove it. Temporary solution to increase speed
+            data.test_dataset.reset_format()
+
+            data.test_dataset = data.test_dataset.with_transform(
+                augmentation_fn
+            )
+            data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
+            # # # TODO: Up to here
+
+            data.prepare_data()
+
+            data.test_dataset.reset_format()
+
+            data.test_dataset = data.test_dataset.with_transform(
+                augmentation_fn
+            )
+            data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
+            # # # TODO: Up to here
 
         embeddings = np.load(embedding_path)
 
