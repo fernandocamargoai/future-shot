@@ -272,7 +272,7 @@ def _evaluate_few_shot(
                 ] = new_label_embeddings.mean(dim=0).to(model.device)
 
             few_shot_test_dataloader = DataLoader(
-                dataset=data.test_dataset,
+                dataset=test_dataset,
                 batch_size=batch_size
                 if batch_size is not None
                 else data.hparams.batch_size,
