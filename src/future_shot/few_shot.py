@@ -272,16 +272,6 @@ def _evaluate_few_shot(
             data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
             # # # TODO: Up to here
 
-            data.prepare_data()
-
-            data.test_dataset.reset_format()
-
-            data.test_dataset = data.test_dataset.with_transform(
-                augmentation_fn
-            )
-            data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
-            # # # TODO: Up to here
-
         embeddings = np.load(embedding_path)
 
         few_shot_embeddings = torch.tensor(embeddings[few_shot_mask])
