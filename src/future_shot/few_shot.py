@@ -172,10 +172,7 @@ def _load_from_experiment_dir(
         FilterOutLabelsFiltering, data.filtering_fn
     )
     data.filtering_fn = None
-
-    # TODO: uncomment it
-    # data.augmentation_fn = None
-    # data.prepare_data()
+    data.augmentation_fn = None
 
     return model, trainer, data, filtering_fn
 
@@ -193,6 +190,7 @@ def _generate_embeddings_for_train_set(
         model, trainer, data, filtering_fn = _load_from_experiment_dir(
             experiment_dir_path
         )
+        data.prepare_data()
 
         train_dataloader = DataLoader(
             dataset=data.train_dataset,
@@ -230,47 +228,28 @@ def _evaluate_few_shot(
 ) -> pd.DataFrame:
     metrics = []
     # TODO: Remove it. Temporary solution to increase speed
-    data = None
     labels = None
     few_shot_mask = None
+    test_dataset = None
     # TODO: Up to here
     for experiment_dir_path, embedding_path in tqdm(
         zip(experiment_dir_paths, embedding_paths),
         desc="Evaluating few-shot for each experiment",
     ):
-        model, trainer, temp_data, filtering_fn = _load_from_experiment_dir(
+        model, trainer, data, filtering_fn = _load_from_experiment_dir(
             experiment_dir_path
         )
         label_field = model.hparams.label_field
-        # TODO: Remove it. Temporary solution to increase speed
-        if data is None:
-            data = temp_data
+
+        if test_dataset is None:
+            data.prepare_data()
             labels = data.train_dataset[label_field].cpu().detach().numpy()
 
             few_shot_mask = np.array(
                 [int(label) in filtering_fn.labels for label in labels]
             )
 
-            # TODO: Remove it. Temporary solution to increase speed
-            from future_shot.extra.timm.preprocessing import TimmFutureShotPreprocessing, TimmFutureShotAugmentation
-            preprocessing_fn: TimmFutureShotPreprocessing = data.preprocessing_fn
-            data.preprocessing_fn = None
-            image_field = preprocessing_fn._image_field
-            transform = preprocessing_fn._transform
-            augmentation_fn = TimmFutureShotAugmentation(image_field, transform)
-
-            data.augmentation_fn = None
-
-            data.prepare_data()
-
-            # TODO: Remove it. Temporary solution to increase speed
-            data.test_dataset.reset_format()
-
-            data.test_dataset = data.test_dataset.with_transform(
-                augmentation_fn
-            )
-            data.test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
-            # # # TODO: Up to here
+            test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
 
         embeddings = np.load(embedding_path)
 
