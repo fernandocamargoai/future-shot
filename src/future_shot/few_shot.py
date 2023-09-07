@@ -230,7 +230,7 @@ def _evaluate_few_shot(
     # TODO: Remove it. Temporary solution to increase speed
     labels = None
     few_shot_mask = None
-    test_dataset = None
+    few_shot_test_dataloader = None
     # TODO: Up to here
     for experiment_dir_path, embedding_path in tqdm(
         zip(experiment_dir_paths, embedding_paths),
@@ -241,7 +241,7 @@ def _evaluate_few_shot(
         )
         label_field = model.hparams.label_field
 
-        if test_dataset is None:
+        if few_shot_test_dataloader is None:
             data.prepare_data()
             labels = data.train_dataset[label_field].cpu().detach().numpy()
 
@@ -250,6 +250,21 @@ def _evaluate_few_shot(
             )
 
             test_dataset = [data_point for data_point in tqdm(data.test_dataset, desc="Preloading test dataset")]
+
+            few_shot_test_dataloader = DataLoader(
+                dataset=test_dataset,
+                batch_size=batch_size
+                if batch_size is not None
+                else data.hparams.batch_size,
+                num_workers=num_workers
+                if num_workers is not None
+                else data.hparams.num_workers,
+                pin_memory=data.hparams.pin_memory,
+                prefetch_factor=prefetch_factor,
+                shuffle=False,
+                persistent_workers=True,
+            )
+
 
         embeddings = np.load(embedding_path)
 
@@ -270,19 +285,6 @@ def _evaluate_few_shot(
                 model._model._class_embedding.weight.data[
                     few_shot_label
                 ] = new_label_embeddings.mean(dim=0).to(model.device)
-
-            few_shot_test_dataloader = DataLoader(
-                dataset=test_dataset,
-                batch_size=batch_size
-                if batch_size is not None
-                else data.hparams.batch_size,
-                num_workers=num_workers
-                if num_workers is not None
-                else data.hparams.num_workers,
-                pin_memory=data.hparams.pin_memory,
-                prefetch_factor=prefetch_factor,
-                shuffle=False,
-            )
 
             metrics.append(trainer.test(model, dataloaders=few_shot_test_dataloader))
 
