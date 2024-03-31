@@ -31,9 +31,6 @@ keywords = ["machine learning", "fewshot learning"]
 authors = [{ name = "Fernando H. F. Camargo", email = "fernando.camargo.ai@gmail.com" }]
 maintainers = [{ name = "Fernando H. F. Camargo", email = "fernando.camargo.ai@gmail.com" }]
 license = { file = "LICENSE" }
-homepage = "https://github.com/fernandocamargoai/future-shot"
-repository = "https://github.com/fernandocamargoai/future-shot"
-documentation = "https://github.com/fernandocamargoai/future-shot/blob/main/README.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -49,17 +46,21 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+dependencies = [
+    "torch>=1.11.0",
+    "pytorch-lightning>=2.0.0",
+    "jsonargparse[signatures]",
+    "datasets>=2.3.0",
+    "evaluate>=0.3.0",
+    "scikit-learn>=1.0.0",
+]
 
-[dependencies]
-python = ">=3.9"
-torch = ">=1.11.0"
-pytorch-lightning = ">=2.0.0"
-jsonargparse = { version = "*", extras = ["signatures"] }
-datasets = ">=2.3.0"
-evaluate = ">=0.3.0"
-scikit-learn = ">=1.0.0"
-
-[extras]
+[project.optional-dependencies]
 transformers = ["sentence-transformers>=2.2.2"]
 timm = ["timm>=0.9"]
 wandb = ["wandb"]
+
+[project.urls]
+homepage = "https://github.com/fernandocamargoai/future-shot"
+repository = "https://github.com/fernandocamargoai/future-shot"
+documentation = "https://github.com/fernandocamargoai/future-shot/blob/main/README.md"
